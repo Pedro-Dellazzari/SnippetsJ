@@ -1,24 +1,32 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useRef, useEffect, useState } from 'react'
 import { MagnifyingGlassIcon, PlusIcon } from '@heroicons/react/24/outline'
 import { useStore } from '../store/useStore'
+import NewSnippetModal from './NewSnippetModal'
 
 const SearchBar: React.FC = () => {
   const searchQuery = useStore(state => state.searchQuery)
   const setSearchQuery = useStore(state => state.setSearchQuery)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const [showNewSnippetModal, setShowNewSnippetModal] = useState(false)
 
   useEffect(() => {
     const handleMenuSearch = () => {
       searchInputRef.current?.focus()
     }
+    
+    const handleMenuNewSnippet = () => {
+      setShowNewSnippetModal(true)
+    }
 
     if (window.electronAPI) {
       window.electronAPI.onMenuSearch(handleMenuSearch)
+      window.electronAPI.onMenuNewSnippet(handleMenuNewSnippet)
     }
 
     return () => {
       if (window.electronAPI) {
         window.electronAPI.removeAllListeners('menu-search')
+        window.electronAPI.removeAllListeners('menu-new-snippet')
       }
     }
   }, [])
@@ -47,14 +55,16 @@ const SearchBar: React.FC = () => {
       
       <button
         className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200"
-        onClick={() => {
-          // TODO: Open new snippet modal
-          console.log('New snippet')
-        }}
+        onClick={() => setShowNewSnippetModal(true)}
       >
         <PlusIcon className="h-4 w-4" />
         <span className="hidden sm:inline">New Snippet</span>
       </button>
+      
+      <NewSnippetModal
+        isOpen={showNewSnippetModal}
+        onClose={() => setShowNewSnippetModal(false)}
+      />
     </div>
   )
 }
