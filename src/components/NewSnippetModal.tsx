@@ -91,22 +91,22 @@ const NewSnippetModal: React.FC<NewSnippetModalProps> = ({ isOpen, onClose }) =>
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Novo Snippet</h2>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between p-8 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Novo Snippet</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all duration-200 hover:scale-110"
           >
-            <XMarkIcon className="h-5 w-5 text-gray-500" />
+            <XMarkIcon className="h-6 w-6 text-gray-500 dark:text-gray-400" />
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="space-y-4">
+        <form onSubmit={handleSubmit} className="p-8">
+          <div className="space-y-6">
             <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="title" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                 Título *
               </label>
               <input
@@ -114,47 +114,49 @@ const NewSnippetModal: React.FC<NewSnippetModalProps> = ({ isOpen, onClose }) =>
                 type="text"
                 value={formData.title}
                 onChange={(e) => handleInputChange('title', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.title ? 'border-red-500' : 'border-gray-300'
+                className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900 ${
+                  errors.title ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                 }`}
                 placeholder="Ex: Remove Duplicates SQL"
               />
-              {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
+              {errors.title && <p className="text-red-500 text-sm mt-2 bg-red-50 dark:bg-red-900/20 px-3 py-1 rounded-lg">{errors.title}</p>}
+            </div>
+            
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="language" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Linguagem *
+                </label>
+                <input
+                  id="language"
+                  type="text"
+                  value={formData.language}
+                  onChange={(e) => handleInputChange('language', e.target.value)}
+                  className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900 ${
+                    errors.language ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
+                  placeholder="Ex: SQL, Python..."
+                />
+                {errors.language && <p className="text-red-500 text-sm mt-2 bg-red-50 dark:bg-red-900/20 px-3 py-1 rounded-lg">{errors.language}</p>}
+              </div>
+              
+              <div>
+                <label htmlFor="tags" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Tags
+                </label>
+                <input
+                  id="tags"
+                  type="text"
+                  value={formData.tags}
+                  onChange={(e) => handleInputChange('tags', e.target.value)}
+                  className="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900"
+                  placeholder="Ex: database, cleanup..."
+                />
+              </div>
             </div>
             
             <div>
-              <label htmlFor="language" className="block text-sm font-medium text-gray-700 mb-1">
-                Linguagem *
-              </label>
-              <input
-                id="language"
-                type="text"
-                value={formData.language}
-                onChange={(e) => handleInputChange('language', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.language ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="Ex: SQL, Python, JavaScript..."
-              />
-              {errors.language && <p className="text-red-500 text-sm mt-1">{errors.language}</p>}
-            </div>
-            
-            <div>
-              <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-1">
-                Tags
-              </label>
-              <input
-                id="tags"
-                type="text"
-                value={formData.tags}
-                onChange={(e) => handleInputChange('tags', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Ex: database, cleanup, performance (separadas por vírgula)"
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="description" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                 Descrição
               </label>
               <textarea
@@ -162,42 +164,42 @@ const NewSnippetModal: React.FC<NewSnippetModalProps> = ({ isOpen, onClose }) =>
                 rows={3}
                 value={formData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900 resize-none"
                 placeholder="Breve descrição do que este snippet faz..."
               />
             </div>
             
             <div>
-              <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="content" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                 Código *
               </label>
               <textarea
                 id="content"
-                rows={8}
+                rows={12}
                 value={formData.content}
                 onChange={(e) => handleInputChange('content', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm ${
-                  errors.content ? 'border-red-500' : 'border-gray-300'
+                className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm transition-all duration-200 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900 resize-none ${
+                  errors.content ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                 }`}
                 placeholder="Cole seu código aqui..."
               />
-              {errors.content && <p className="text-red-500 text-sm mt-1">{errors.content}</p>}
+              {errors.content && <p className="text-red-500 text-sm mt-2 bg-red-50 dark:bg-red-900/20 px-3 py-1 rounded-lg">{errors.content}</p>}
             </div>
           </div>
           
-          <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-200">
+          <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-6 py-3 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 font-medium"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all duration-200 shadow-sm hover:shadow-lg hover:scale-105 font-medium"
             >
-              Salvar Snippet
+              Criar Snippet
             </button>
           </div>
         </form>

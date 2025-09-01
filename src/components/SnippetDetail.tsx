@@ -13,6 +13,8 @@ import Editor from '@monaco-editor/react'
 import clsx from 'clsx'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { getLanguageColor, getTagColor, getLightColor } from '../utils/colors'
+import Tooltip from './Tooltip'
 
 const SnippetDetail: React.FC = () => {
   const { 
@@ -154,15 +156,15 @@ const SnippetDetail: React.FC = () => {
 
   if (!selectedSnippet) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="text-gray-400 mb-4">
-            <ClipboardDocumentIcon className="h-16 w-16 mx-auto" />
+      <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center max-w-md mx-auto p-8">
+          <div className="text-gray-400 dark:text-gray-500 mb-6">
+            <ClipboardDocumentIcon className="h-20 w-20 mx-auto" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
             Selecione um snippet
           </h3>
-          <p className="text-gray-500 max-w-sm mx-auto">
+          <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
             Escolha um snippet da lista para visualizar seu conteúdo e detalhes aqui.
           </p>
         </div>
@@ -171,9 +173,9 @@ const SnippetDetail: React.FC = () => {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white">
+    <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
       {/* Header */}
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-8 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1 min-w-0">
             {isEditing ? (
@@ -183,8 +185,8 @@ const SnippetDetail: React.FC = () => {
                     type="text"
                     value={editForm.title}
                     onChange={(e) => handleFormChange('title', e.target.value)}
-                    className={`text-xl font-semibold text-gray-900 mb-2 w-full bg-transparent border-b-2 focus:outline-none ${
-                      editErrors.title ? 'border-red-500' : 'border-gray-200 focus:border-blue-500'
+                    className={`text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3 w-full bg-transparent border-b-2 focus:outline-none ${
+                      editErrors.title ? 'border-red-500' : 'border-gray-300 dark:border-gray-600 focus:border-blue-500'
                     }`}
                     placeholder="Título do snippet"
                   />
@@ -195,78 +197,86 @@ const SnippetDetail: React.FC = () => {
                 <textarea
                   value={editForm.description}
                   onChange={(e) => handleFormChange('description', e.target.value)}
-                  className="text-gray-600 w-full bg-transparent border-b border-gray-200 focus:border-blue-500 outline-none resize-none"
+                  className="text-gray-700 dark:text-gray-300 w-full bg-transparent border-b border-gray-300 dark:border-gray-600 focus:border-blue-500 outline-none resize-none"
                   placeholder="Descrição do snippet"
                   rows={2}
                 />
               </>
             ) : (
               <>
-                <h1 className="text-xl font-semibold text-gray-900 mb-2">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4 leading-tight">
                   {selectedSnippet.title}
                 </h1>
-                <p className="text-gray-600">
-                  {selectedSnippet.description}
-                </p>
+                {selectedSnippet.description && (
+                  <p className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
+                    {selectedSnippet.description}
+                  </p>
+                )}
               </>
             )}
           </div>
           
-          <div className="flex items-center gap-2 ml-4">
+          <div className="flex items-center gap-3 ml-6">
             {isEditing ? (
               <>
                 <button
                   onClick={handleEditToggle}
-                  className="px-3 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200 font-medium"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleSaveEdit}
-                  className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all duration-200 shadow-sm hover:shadow font-medium"
                 >
                   Salvar
                 </button>
               </>
             ) : (
               <>
-                <button
-                  onClick={() => toggleFavorite(selectedSnippet.id)}
-                  className={clsx(
-                    'p-2 rounded-lg transition-colors',
-                    selectedSnippet.favorite
-                      ? 'text-red-500 hover:bg-red-50'
-                      : 'text-gray-400 hover:text-red-500 hover:bg-gray-50'
-                  )}
-                >
-                  {selectedSnippet.favorite ? (
-                    <HeartIconSolid className="h-5 w-5" />
-                  ) : (
-                    <HeartIcon className="h-5 w-5" />
-                  )}
-                </button>
+                <Tooltip content={selectedSnippet.favorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}>
+                  <button
+                    onClick={() => toggleFavorite(selectedSnippet.id)}
+                    className={clsx(
+                      'p-3 rounded-xl transition-all duration-200 hover:scale-110',
+                      selectedSnippet.favorite
+                        ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
+                        : 'text-gray-400 dark:text-gray-500 hover:text-red-500 hover:bg-gray-50 dark:hover:bg-gray-800'
+                    )}
+                  >
+                    {selectedSnippet.favorite ? (
+                      <HeartIconSolid className="h-5 w-5" />
+                    ) : (
+                      <HeartIcon className="h-5 w-5" />
+                    )}
+                  </button>
+                </Tooltip>
                 
-                <button
-                  onClick={handleEditToggle}
-                  className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                >
-                  <PencilIcon className="h-5 w-5" />
-                </button>
+                <Tooltip content="Editar snippet">
+                  <button
+                    onClick={handleEditToggle}
+                    className="p-3 text-gray-400 dark:text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all duration-200 hover:scale-110"
+                  >
+                    <PencilIcon className="h-5 w-5" />
+                  </button>
+                </Tooltip>
                 
-                <button
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  <TrashIcon className="h-5 w-5" />
-                </button>
+                <Tooltip content="Excluir snippet">
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="p-3 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-200 hover:scale-110"
+                  >
+                    <TrashIcon className="h-5 w-5" />
+                  </button>
+                </Tooltip>
                 
                 <button
                   onClick={handleCopy}
                   className={clsx(
-                    'flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200',
+                    'flex items-center gap-3 px-5 py-3 rounded-xl transition-all duration-200 font-medium shadow-sm',
                     copied
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                      ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 scale-105'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-lg hover:scale-105'
                   )}
                 >
                   {copied ? (
@@ -321,61 +331,74 @@ const SnippetDetail: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="flex flex-wrap gap-2">
-              {selectedSnippet.tags.map((tag, index) => (
-                <span
-                  key={index}
-                  className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full"
-                >
-                  {tag}
-                </span>
-              ))}
+            <div className="flex flex-wrap gap-3">
+              {selectedSnippet.tags.map((tag, index) => {
+                const tagColor = getTagColor(tag)
+                return (
+                  <span
+                    key={index}
+                    className="px-4 py-2 text-sm font-medium rounded-full border shadow-sm"
+                    style={{
+                      backgroundColor: getLightColor(tagColor, 0.1),
+                      borderColor: getLightColor(tagColor, 0.3),
+                      color: tagColor
+                    }}
+                  >
+                    {tag}
+                  </span>
+                )
+              })}
             </div>
           )}
         </div>
 
         {/* Metadata */}
-        <div className="flex items-center gap-6 text-sm text-gray-500">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center flex-wrap gap-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-3">
             <div
-              className="w-3 h-3 rounded-full"
-              style={{ 
-                backgroundColor: selectedSnippet.language === 'sql' ? '#336791' :
-                                selectedSnippet.language === 'python' ? '#3776ab' :
-                                selectedSnippet.language === 'bash' ? '#4eaa25' :
-                                '#6b7280'
-              }}
+              className="w-4 h-4 rounded-full ring-2 ring-white dark:ring-gray-800 shadow-sm"
+              style={{ backgroundColor: getLanguageColor(selectedSnippet.language) }}
             />
-            <span className="capitalize">{selectedSnippet.language}</span>
+            <span className="text-base font-medium text-gray-700 dark:text-gray-300 capitalize">
+              {selectedSnippet.language}
+            </span>
           </div>
           
-          <div className="flex items-center gap-1">
-            <CalendarDaysIcon className="h-4 w-4" />
-            <span>Atualizado {formatDate(selectedSnippet.updatedAt)}</span>
-          </div>
+          <Tooltip content={`Última atualização: ${formatDate(selectedSnippet.updatedAt)}`}>
+            <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+              <CalendarDaysIcon className="h-4 w-4" />
+              <span className="text-sm">{formatDate(selectedSnippet.updatedAt)}</span>
+            </div>
+          </Tooltip>
           
           {selectedSnippet.usage_count > 0 && (
-            <div className="flex items-center gap-1">
-              <EyeIcon className="h-4 w-4" />
-              <span>{selectedSnippet.usage_count} usos</span>
-            </div>
+            <Tooltip content="Número de vezes copiado">
+              <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 px-3 py-1 rounded-full">
+                <EyeIcon className="h-4 w-4" />
+                <span className="text-sm font-medium">{selectedSnippet.usage_count}</span>
+              </div>
+            </Tooltip>
           )}
           
           {selectedSnippet.project && (
-            <div className="flex items-center gap-1">
-              <span>Projeto: {selectedSnippet.project}</span>
+            <div className="flex items-center gap-2 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 px-3 py-1 rounded-full">
+              <span className="text-sm font-medium">{selectedSnippet.project}</span>
             </div>
           )}
         </div>
       </div>
 
       {/* Code Editor */}
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-8">
         {editErrors.content && isEditing && (
-          <p className="text-red-500 text-sm mb-2">{editErrors.content}</p>
+          <p className="text-red-500 text-sm mb-4 bg-red-50 dark:bg-red-900/20 px-4 py-2 rounded-lg border border-red-200 dark:border-red-800">
+            {editErrors.content}
+          </p>
         )}
-        <div className={`h-full border rounded-lg overflow-hidden ${
-          editErrors.content && isEditing ? 'border-red-500' : 'border-gray-200'
+        <div className={`h-full rounded-xl overflow-hidden shadow-sm border-2 ${
+          editErrors.content && isEditing 
+            ? 'border-red-300 dark:border-red-700' 
+            : 'border-gray-200 dark:border-gray-700'
         }`}>
           <Editor
             height="100%"
@@ -413,24 +436,29 @@ const SnippetDetail: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-              Excluir snippet?
-            </h3>
-            <p className="text-gray-500 mb-6">
-              Tem certeza que deseja excluir este snippet? Esta ação não pode ser desfeita.
-            </p>
-            <div className="flex justify-end gap-3">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-md mx-4 border border-gray-200 dark:border-gray-700">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <TrashIcon className="h-8 w-8 text-red-600 dark:text-red-400" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                Excluir snippet?
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                Tem certeza que deseja excluir <strong>"{selectedSnippet.title}"</strong>? Esta ação não pode ser desfeita.
+              </p>
+            </div>
+            <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-3 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200 font-medium"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all duration-200 font-medium shadow-sm hover:shadow"
               >
                 Excluir
               </button>

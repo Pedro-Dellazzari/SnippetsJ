@@ -13,7 +13,7 @@ function App() {
   }, [initializeData])
 
   return (
-    <div className="h-screen flex flex-col bg-white">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <SearchBar />
       
       <div className="flex flex-1 overflow-hidden">
