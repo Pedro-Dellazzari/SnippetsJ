@@ -12,10 +12,12 @@ import clsx from 'clsx'
 interface NewSnippetModalProps {
   isOpen: boolean
   onClose: () => void
+  editSnippet?: Snippet | null
 }
 
-const NewSnippetModal: React.FC<NewSnippetModalProps> = ({ isOpen, onClose }) => {
+const NewSnippetModal: React.FC<NewSnippetModalProps> = ({ isOpen, onClose, editSnippet }) => {
   const addSnippet = useStore(state => state.addSnippet)
+  const updateSnippet = useStore(state => state.updateSnippet)
   const { toast, success, error, hideToast } = useToast()
   
   const [formData, setFormData] = useState({
@@ -47,25 +49,36 @@ const NewSnippetModal: React.FC<NewSnippetModalProps> = ({ isOpen, onClose }) =>
     }
   }, [formData.tags])
 
-  // Reset form when modal opens
+  // Reset form when modal opens or populate for editing
   useEffect(() => {
     if (isOpen) {
-      setFormData({
-        title: '',
-        description: '',
-        language: '',
-        tags: '',
-        content: ''
-      })
+      if (editSnippet) {
+        // Populate form with existing snippet data
+        setFormData({
+          title: editSnippet.title,
+          description: editSnippet.description,
+          language: editSnippet.language,
+          tags: editSnippet.tags.join(', '),
+          content: editSnippet.content
+        })
+      } else {
+        // Reset for new snippet
+        setFormData({
+          title: '',
+          description: '',
+          language: '',
+          tags: '',
+          content: ''
+        })
+      }
       setErrors({})
       setIsSubmitting(false)
-      setParsedTags([])
       // Focus title input after animation
       setTimeout(() => {
         titleInputRef.current?.focus()
       }, 300)
     }
-  }, [isOpen])
+  }, [isOpen, editSnippet])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -126,24 +139,38 @@ const NewSnippetModal: React.FC<NewSnippetModalProps> = ({ isOpen, onClose }) =>
         .filter(tag => tag.length > 0)
         .filter((tag, index, arr) => arr.indexOf(tag) === index) // Remove duplicates
       
-      const newSnippet: Snippet = {
-        id: `snippet-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        content: formData.content.trim(),
-        language: formData.language.trim().toLowerCase(),
-        tags: tagsArray,
-        category: formData.language.trim(),
-        favorite: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+      if (editSnippet) {
+        // Update existing snippet
+        updateSnippet(editSnippet.id, {
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+          content: formData.content.trim(),
+          language: formData.language.trim().toLowerCase(),
+          tags: tagsArray,
+          category: formData.language.trim()
+        })
+        success('Snippet atualizado com sucesso!')
+      } else {
+        // Create new snippet
+        const newSnippet: Snippet = {
+          id: `snippet-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+          content: formData.content.trim(),
+          language: formData.language.trim().toLowerCase(),
+          tags: tagsArray,
+          category: formData.language.trim(),
+          favorite: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         usage_count: 0
+        }
+        
+        addSnippet(newSnippet)
+        
+        // Show success message
+        success('Snippet criado com sucesso!')
       }
-      
-      addSnippet(newSnippet)
-      
-      // Show success message
-      success('Snippet criado com sucesso!')
       
       // Close modal after short delay
       setTimeout(() => {
@@ -155,7 +182,7 @@ const NewSnippetModal: React.FC<NewSnippetModalProps> = ({ isOpen, onClose }) =>
     } finally {
       setIsSubmitting(false)
     }
-  }, [formData, isSubmitting, validateForm, addSnippet, success, error, onClose])
+  }, [formData, isSubmitting, validateForm, addSnippet, updateSnippet, editSnippet, success, error, onClose])
 
   const handleClose = useCallback(() => {
     if (isSubmitting) return
@@ -216,10 +243,10 @@ const NewSnippetModal: React.FC<NewSnippetModalProps> = ({ isOpen, onClose }) =>
           <div className="flex items-center justify-between px-8 py-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">
-                ✨ Novo Snippet
+                {editSnippet ? '✏️ Editar Snippet' : '✨ Novo Snippet'}
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Crie e organize seu código com facilidade
+                {editSnippet ? 'Modifique seu snippet conforme necessário' : 'Crie e organize seu código com facilidade'}
               </p>
             </div>
             <button
@@ -427,12 +454,12 @@ const NewSnippetModal: React.FC<NewSnippetModalProps> = ({ isOpen, onClose }) =>
                   {isSubmitting ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Criando...
+                      {editSnippet ? 'Salvando...' : 'Criando...'}
                     </>
                   ) : (
                     <>
                       <DocumentDuplicateIcon className="h-4 w-4" />
-                      Criar Snippet
+                      {editSnippet ? 'Salvar Alterações' : 'Criar Snippet'}
                     </>
                   )}
                 </button>

@@ -24,6 +24,18 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
   const paddingLeft = 16 + (level * 20)
 
   const handleClick = () => {
+    if (item.isSpecial) {
+      // Lidar com botões especiais como "+ Nova pasta" e "+ Novo Projeto"
+      if (item.id === 'add-folder') {
+        // TODO: Abrir modal para criar nova pasta
+        console.log('Criar nova pasta')
+      } else if (item.id === 'add-project') {
+        // TODO: Abrir modal para criar novo projeto
+        console.log('Criar novo projeto')
+      }
+      return
+    }
+    
     if (hasChildren) {
       onToggle(item.id)
     } else {
@@ -66,14 +78,26 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
     )
   }
 
-  const getTagColor = () => {
-    if (item.type !== 'tag' || !item.color) return {}
+  const getItemColor = () => {
+    if (!item.color) return {}
     
-    return {
-      '--tag-color': item.color,
-      backgroundColor: `${item.color}15`,
-      borderLeft: `3px solid ${item.color}`
-    } as React.CSSProperties
+    if (item.type === 'tag') {
+      return {
+        '--tag-color': item.color,
+        backgroundColor: `${item.color}15`,
+        borderLeft: `3px solid ${item.color}`
+      } as React.CSSProperties
+    }
+    
+    // Para linguagens, usar apenas uma borda colorida sutil
+    if (item.id?.startsWith('language-')) {
+      return {
+        '--language-color': item.color,
+        borderLeft: `3px solid ${item.color}`
+      } as React.CSSProperties
+    }
+    
+    return {}
   }
 
   return (
@@ -87,7 +111,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
         )}
         style={{ 
           paddingLeft: `${paddingLeft}px`,
-          ...item.type === 'tag' ? getTagColor() : undefined
+          ...getItemColor()
         }}
       >
         {/* Expand/Collapse Button for folders */}
@@ -119,6 +143,18 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
               <SidebarIcon 
                 name={item.icon} 
                 className="h-4 w-4"
+                isExpanded={hasChildren ? isExpanded : undefined}
+              />
+            </div>
+          ) : item.id?.startsWith('language-') && item.color ? (
+            <div className="flex items-center">
+              <div
+                className="w-2 h-2 rounded-full mr-2"
+                style={{ backgroundColor: item.color }}
+              />
+              <SidebarIcon 
+                name={item.icon} 
+                className="h-4 w-4 text-gray-500 dark:text-gray-400"
                 isExpanded={hasChildren ? isExpanded : undefined}
               />
             </div>

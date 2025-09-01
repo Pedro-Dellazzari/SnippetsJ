@@ -1,19 +1,35 @@
 import { create } from 'zustand'
 import { Snippet, Category, Project, Tag, SearchResult, AppState } from '../types'
 import Fuse from 'fuse.js'
+import { storage } from '../utils/storage'
 
 interface StoreActions {
   setSnippets: (snippets: Snippet[]) => void
   addSnippet: (snippet: Snippet) => void
   updateSnippet: (id: string, updates: Partial<Snippet>) => void
   deleteSnippet: (id: string) => void
+  duplicateSnippet: (id: string) => Snippet | null
   setSelectedSnippet: (snippet: Snippet | null) => void
   setSearchQuery: (query: string) => void
   setSidebarTab: (tab: 'categories' | 'projects' | 'tags') => void
   incrementUsageCount: (id: string) => void
   toggleFavorite: (id: string) => void
   searchSnippets: (query: string) => void
-  initializeData: () => void
+  loadPersistedData: () => void
+  importExampleData: () => void
+  exportData: () => string
+  importData: (jsonData: string) => boolean
+  getSnippetCounts: () => {
+    totalSnippets: number
+    categoryCounts: Record<string, number>
+    projectCounts: Record<string, number>
+    tagCounts: Record<string, number>
+    untagged: number
+    uncategorized: number
+    recentlyModified: number
+    favorites: number
+    mostUsed: number
+  }
 }
 
 const initialState: AppState = {
@@ -29,101 +45,66 @@ const initialState: AppState = {
   error: null
 }
 
-const mockData = {
+// Example data that can be optionally imported
+const exampleData = {
   categories: [
-    { id: '1', name: 'SQL', color: '#3B82F6', snippetCount: 3 },
-    { id: '2', name: 'Python', color: '#10B981', snippetCount: 2 },
-    { id: '3', name: 'Bash', color: '#F59E0B', snippetCount: 1 }
+    { id: '1', name: 'SQL', color: '#3B82F6', snippetCount: 0 },
+    { id: '2', name: 'Python', color: '#10B981', snippetCount: 0 },
+    { id: '3', name: 'JavaScript', color: '#F59E0B', snippetCount: 0 }
   ] as Category[],
   
   projects: [
-    { id: '1', name: 'Data Pipeline', description: 'ETL processes', snippetCount: 2 },
-    { id: '2', name: 'Analytics', description: 'Data analysis scripts', snippetCount: 4 }
+    { id: '1', name: 'Projetos Pessoais', description: 'Snippets para projetos pessoais', snippetCount: 0 }
   ] as Project[],
   
   tags: [
-    { id: '1', name: 'database', color: '#EF4444', snippetCount: 3 },
-    { id: '2', name: 'retry', color: '#8B5CF6', snippetCount: 1 },
-    { id: '3', name: 'docker', color: '#06B6D4', snippetCount: 1 }
+    { id: '1', name: 'utils', color: '#EF4444', snippetCount: 0 },
+    { id: '2', name: 'exemplo', color: '#8B5CF6', snippetCount: 0 }
   ] as Tag[],
   
   snippets: [
     {
-      id: '1',
-      title: 'Remove Duplicates SQL',
-      description: 'SQL query to remove duplicate rows from a table',
-      content: `WITH deduped AS (
-  SELECT *,
-    ROW_NUMBER() OVER (
-      PARTITION BY column1, column2 
-      ORDER BY created_at DESC
-    ) as row_num
-  FROM your_table
-)
-SELECT * FROM deduped 
-WHERE row_num = 1;`,
+      id: 'example-1',
+      title: 'Exemplo: Função de Formatação de Data',
+      description: 'Função JavaScript para formatar datas em português',
+      content: `function formatarData(data) {
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit', 
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(new Date(data))
+}
+
+// Uso
+console.log(formatarData(new Date())) // 01/01/2024 10:30`,
+      language: 'javascript',
+      tags: ['utils', 'exemplo'],
+      category: 'JavaScript',
+      favorite: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      usage_count: 0
+    },
+    {
+      id: 'example-2',
+      title: 'Exemplo: Query SQL Básica',
+      description: 'Exemplo de query SQL para consulta com JOIN',
+      content: `SELECT u.nome, p.titulo, p.created_at
+FROM usuarios u
+INNER JOIN posts p ON u.id = p.usuario_id
+WHERE u.ativo = true
+  AND p.created_at >= CURDATE() - INTERVAL 30 DAY
+ORDER BY p.created_at DESC
+LIMIT 10;`,
       language: 'sql',
-      tags: ['database', 'cleanup'],
+      tags: ['utils', 'exemplo'],
       category: 'SQL',
-      project: 'Data Pipeline',
-      favorite: true,
-      createdAt: '2024-01-15T10:30:00Z',
-      updatedAt: '2024-01-15T10:30:00Z',
-      usage_count: 15,
-      lastUsed: '2024-01-20T14:22:00Z'
-    },
-    {
-      id: '2',
-      title: 'Python Retry Decorator',
-      description: 'Decorator for automatic retry logic with exponential backoff',
-      content: `import time
-import random
-from functools import wraps
-
-def retry(max_attempts=3, delay=1, exponential_base=2):
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            for attempt in range(max_attempts):
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    if attempt == max_attempts - 1:
-                        raise e
-                    wait_time = delay * (exponential_base ** attempt)
-                    wait_time += random.uniform(0, 1)
-                    time.sleep(wait_time)
-            return None
-        return wrapper
-    return decorator
-
-@retry(max_attempts=5, delay=2)
-def api_call():
-    # Your API call here
-    pass`,
-      language: 'python',
-      tags: ['retry', 'decorator', 'error-handling'],
-      category: 'Python',
-      project: 'Data Pipeline',
       favorite: false,
-      createdAt: '2024-01-12T09:15:00Z',
-      updatedAt: '2024-01-12T09:15:00Z',
-      usage_count: 8,
-      lastUsed: '2024-01-18T11:45:00Z'
-    },
-    {
-      id: '3',
-      title: 'Docker Container Stats',
-      description: 'Command to monitor Docker container resource usage',
-      content: 'docker stats --format "table {{.Container}}\\t{{.CPUPerc}}\\t{{.MemUsage}}\\t{{.NetIO}}\\t{{.BlockIO}}"',
-      language: 'bash',
-      tags: ['docker', 'monitoring'],
-      category: 'Bash',
-      favorite: false,
-      createdAt: '2024-01-10T16:45:00Z',
-      updatedAt: '2024-01-10T16:45:00Z',
-      usage_count: 3,
-      lastUsed: '2024-01-19T08:30:00Z'
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      usage_count: 0
     }
   ] as Snippet[]
 }
@@ -131,22 +112,58 @@ def api_call():
 export const useStore = create<AppState & StoreActions>((set, get) => ({
   ...initialState,
   
-  setSnippets: (snippets) => set({ snippets }),
+  setSnippets: (snippets) => {
+    set({ snippets })
+    storage.saveSnippets(snippets)
+  },
   
-  addSnippet: (snippet) => set((state) => ({
-    snippets: [...state.snippets, snippet]
-  })),
+  addSnippet: (snippet) => {
+    const newSnippets = [...get().snippets, snippet]
+    set({ snippets: newSnippets })
+    storage.saveSnippets(newSnippets)
+  },
   
-  updateSnippet: (id, updates) => set((state) => ({
-    snippets: state.snippets.map(snippet =>
+  updateSnippet: (id, updates) => {
+    const newSnippets = get().snippets.map(snippet =>
       snippet.id === id ? { ...snippet, ...updates, updatedAt: new Date().toISOString() } : snippet
     )
-  })),
+    set({ snippets: newSnippets })
+    storage.saveSnippets(newSnippets)
+  },
   
-  deleteSnippet: (id) => set((state) => ({
-    snippets: state.snippets.filter(snippet => snippet.id !== id),
-    selectedSnippet: state.selectedSnippet?.id === id ? null : state.selectedSnippet
-  })),
+  deleteSnippet: (id) => {
+    const state = get()
+    const newSnippets = state.snippets.filter(snippet => snippet.id !== id)
+    set({ 
+      snippets: newSnippets,
+      selectedSnippet: state.selectedSnippet?.id === id ? null : state.selectedSnippet
+    })
+    storage.saveSnippets(newSnippets)
+  },
+
+  duplicateSnippet: (id) => {
+    const state = get()
+    const originalSnippet = state.snippets.find(snippet => snippet.id === id)
+    
+    if (!originalSnippet) return null
+    
+    const duplicatedSnippet: Snippet = {
+      ...originalSnippet,
+      id: crypto.randomUUID(),
+      title: `Cópia de ${originalSnippet.title}`,
+      favorite: false,
+      usage_count: 0,
+      lastUsed: undefined,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+    
+    const newSnippets = [...state.snippets, duplicatedSnippet]
+    set({ snippets: newSnippets })
+    storage.saveSnippets(newSnippets)
+    
+    return duplicatedSnippet
+  },
   
   setSelectedSnippet: (snippet) => set({ selectedSnippet: snippet }),
   
@@ -161,8 +178,8 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
   
   setSidebarTab: (tab) => set({ sidebarTab: tab }),
   
-  incrementUsageCount: (id) => set((state) => ({
-    snippets: state.snippets.map(snippet =>
+  incrementUsageCount: (id) => {
+    const newSnippets = get().snippets.map(snippet =>
       snippet.id === id 
         ? { 
             ...snippet, 
@@ -171,13 +188,17 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
           } 
         : snippet
     )
-  })),
+    set({ snippets: newSnippets })
+    storage.saveSnippets(newSnippets)
+  },
   
-  toggleFavorite: (id) => set((state) => ({
-    snippets: state.snippets.map(snippet =>
+  toggleFavorite: (id) => {
+    const newSnippets = get().snippets.map(snippet =>
       snippet.id === id ? { ...snippet, favorite: !snippet.favorite } : snippet
     )
-  })),
+    set({ snippets: newSnippets })
+    storage.saveSnippets(newSnippets)
+  },
   
   searchSnippets: (query) => {
     const { snippets } = get()
@@ -202,13 +223,123 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
     set({ searchResults: results })
   },
   
-  initializeData: () => {
+  loadPersistedData: () => {
+    const data = storage.loadAllData()
     set({
-      categories: mockData.categories,
-      projects: mockData.projects,
-      tags: mockData.tags,
-      snippets: mockData.snippets,
-      selectedSnippet: mockData.snippets[0]
+      snippets: data.snippets,
+      categories: data.categories,
+      projects: data.projects,
+      tags: data.tags,
+      selectedSnippet: data.snippets.length > 0 ? data.snippets[0] : null
     })
+  },
+
+  importExampleData: () => {
+    const currentData = storage.loadAllData()
+    const newData = {
+      snippets: [...currentData.snippets, ...exampleData.snippets],
+      categories: [...currentData.categories, ...exampleData.categories],
+      projects: [...currentData.projects, ...exampleData.projects],
+      tags: [...currentData.tags, ...exampleData.tags]
+    }
+    
+    storage.saveAllData(newData)
+    set({
+      snippets: newData.snippets,
+      categories: newData.categories,
+      projects: newData.projects,
+      tags: newData.tags
+    })
+  },
+
+  exportData: () => {
+    const { snippets, categories, projects, tags } = get()
+    return JSON.stringify({ snippets, categories, projects, tags }, null, 2)
+  },
+
+  importData: (jsonData: string) => {
+    try {
+      const data = JSON.parse(jsonData)
+      if (!data.snippets || !Array.isArray(data.snippets)) return false
+      
+      const validData = {
+        snippets: data.snippets || [],
+        categories: data.categories || [],
+        projects: data.projects || [],
+        tags: data.tags || []
+      }
+      
+      storage.saveAllData(validData)
+      set({
+        snippets: validData.snippets,
+        categories: validData.categories,
+        projects: validData.projects,
+        tags: validData.tags
+      })
+      
+      return true
+    } catch (error) {
+      console.error('Error importing data:', error)
+      return false
+    }
+  },
+
+  getSnippetCounts: () => {
+    const { snippets } = get()
+    const now = new Date()
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+    
+    // Contadores de categorias
+    const categoryCounts: Record<string, number> = {}
+    snippets.forEach(snippet => {
+      if (snippet.category) {
+        categoryCounts[snippet.category] = (categoryCounts[snippet.category] || 0) + 1
+      }
+    })
+    
+    // Contadores de projetos
+    const projectCounts: Record<string, number> = {}
+    snippets.forEach(snippet => {
+      if (snippet.project) {
+        projectCounts[snippet.project] = (projectCounts[snippet.project] || 0) + 1
+      }
+    })
+    
+    // Contadores de tags
+    const tagCounts: Record<string, number> = {}
+    snippets.forEach(snippet => {
+      snippet.tags?.forEach(tag => {
+        tagCounts[tag] = (tagCounts[tag] || 0) + 1
+      })
+    })
+    
+    // Snippets sem tags
+    const untagged = snippets.filter(snippet => !snippet.tags || snippet.tags.length === 0).length
+    
+    // Snippets não categorizados
+    const uncategorized = snippets.filter(snippet => !snippet.category || snippet.category.trim() === '').length
+    
+    // Modificados recentemente (últimos 7 dias)
+    const recentlyModified = snippets.filter(snippet => 
+      new Date(snippet.updatedAt) >= sevenDaysAgo
+    ).length
+    
+    // Favoritos
+    const favorites = snippets.filter(snippet => snippet.favorite).length
+    
+    // Mais usados (com mais de 0 uso)
+    const mostUsed = snippets.filter(snippet => snippet.usage_count > 0).length
+    
+    return {
+      totalSnippets: snippets.length,
+      categoryCounts,
+      projectCounts,
+      tagCounts,
+      untagged,
+      uncategorized,
+      recentlyModified,
+      favorites,
+      mostUsed
+    }
   }
 }))

@@ -6,11 +6,11 @@ import SnippetDetail from './components/SnippetDetail'
 import SearchBar from './components/SearchBar'
 
 function App() {
-  const initializeData = useStore(state => state.initializeData)
+  const loadPersistedData = useStore(state => state.loadPersistedData)
 
   useEffect(() => {
-    initializeData()
-  }, [initializeData])
+    loadPersistedData()
+  }, [loadPersistedData])
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">

@@ -1,11 +1,11 @@
 import React from 'react'
-import { SIDEBAR_DATA } from '../types/sidebar'
 import { useSidebarState } from '../hooks/useSidebarState'
+import { useDynamicSidebar } from '../hooks/useDynamicSidebar'
+import { useStore } from '../store/useStore'
 import SidebarSection from './SidebarSection'
 
 const Sidebar: React.FC = () => {
   const {
-    expandedSections,
     expandedFolders,
     selectedItem,
     toggleSection,
@@ -13,6 +13,9 @@ const Sidebar: React.FC = () => {
     selectItem,
     isExpanded
   } = useSidebarState()
+  
+  const sidebarData = useDynamicSidebar()
+  const getSnippetCounts = useStore(state => state.getSnippetCounts)
 
   return (
     <div className="w-80 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-sm border-r border-gray-200/60 dark:border-gray-700/60 flex flex-col">
@@ -36,7 +39,7 @@ const Sidebar: React.FC = () => {
       {/* Sidebar Content */}
       <div className="flex-1 overflow-y-auto px-2 py-6">
         <div className="space-y-2">
-          {SIDEBAR_DATA.map((section) => (
+          {sidebarData.map((section) => (
             <SidebarSection
               key={section.id}
               section={section}
@@ -54,8 +57,8 @@ const Sidebar: React.FC = () => {
       {/* Footer */}
       <div className="px-6 py-3 border-t border-gray-200/60 dark:border-gray-700/60 bg-gray-50/50 dark:bg-gray-800/50">
         <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-          <span>127 snippets total</span>
-          <span>3.2 MB</span>
+          <span>{getSnippetCounts().totalSnippets} snippets total</span>
+          <span>{((JSON.stringify(sidebarData).length / 1024 / 1024) * 10).toFixed(1)} MB</span>
         </div>
       </div>
     </div>

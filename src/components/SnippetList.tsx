@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useStore } from '../store/useStore'
 import { HeartIcon, ClockIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid'
@@ -7,6 +7,10 @@ import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { getLanguageColor, getTagColor, getLightColor } from '../utils/colors'
 import Tooltip from './Tooltip'
+import ContextMenu, { ContextMenuFolder } from './ContextMenu'
+import { useContextMenu } from '../hooks/useContextMenu'
+import NewSnippetModal from './NewSnippetModal'
+import EmptyState from './EmptyState'
 
 const SnippetList: React.FC = () => {
   const { 
@@ -15,11 +19,62 @@ const SnippetList: React.FC = () => {
     setSelectedSnippet, 
     searchQuery, 
     searchResults,
-    toggleFavorite 
+    toggleFavorite,
+    updateSnippet,
+    duplicateSnippet,
+    deleteSnippet,
+    categories
   } = useStore()
+
+  const { isOpen, position, targetSnippet, openContextMenu, closeContextMenu } = useContextMenu()
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [showNewModal, setShowNewModal] = useState(false)
+  const [editingSnippet, setEditingSnippet] = useState<any>(null)
 
   const displaySnippets = searchQuery ? searchResults.map(r => r.snippet) : snippets
 
+  // Mock folders data for the context menu - in a real app, this would come from the store
+  const folders: ContextMenuFolder[] = [
+    { id: 'uncategorized', name: 'Sem categoria', level: 0 },
+    ...categories.map(cat => ({ id: cat.name, name: cat.name, level: 0 }))
+  ]
+
+  const handleMoveToFolder = (folderId: string) => {
+    if (targetSnippet) {
+      const folderName = folderId === 'uncategorized' ? '' : folderId
+      updateSnippet(targetSnippet.id, { category: folderName })
+    }
+  }
+
+  const handleEditSnippet = () => {
+    if (targetSnippet) {
+      setEditingSnippet(targetSnippet)
+      setShowEditModal(true)
+    }
+  }
+
+  const handleDuplicateSnippet = () => {
+    if (targetSnippet) {
+      const duplicated = duplicateSnippet(targetSnippet.id)
+      if (duplicated) {
+        setEditingSnippet(duplicated)
+        setShowEditModal(true)
+      }
+    }
+  }
+
+  const handleDeleteSnippet = () => {
+    setShowDeleteModal(true)
+  }
+
+  const confirmDelete = () => {
+    if (targetSnippet) {
+      deleteSnippet(targetSnippet.id)
+      closeContextMenu()
+      setShowDeleteModal(false)
+    }
+  }
 
   const formatDate = (dateString: string) => {
     try {
@@ -51,15 +106,24 @@ const SnippetList: React.FC = () => {
       {/* List */}
       <div className="flex-1 overflow-y-auto">
         {displaySnippets.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-            {searchQuery ? 'Nenhum resultado encontrado' : 'Nenhum snippet ainda'}
-          </div>
+          searchQuery ? (
+            <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+              Nenhum resultado encontrado
+            </div>
+          ) : snippets.length === 0 ? (
+            <EmptyState onCreateNew={() => setShowNewModal(true)} />
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+              Nenhum snippet na categoria selecionada
+            </div>
+          )
         ) : (
           <div className="space-y-1 p-2">
             {displaySnippets.map((snippet) => (
               <div
                 key={snippet.id}
                 onClick={() => setSelectedSnippet(snippet)}
+                onContextMenu={(e) => openContextMenu(e, snippet)}
                 className={clsx(
                   'p-5 cursor-pointer transition-all duration-200 rounded-xl border border-transparent',
                   'hover:bg-gray-50 dark:hover:bg-gray-800 hover:shadow-sm hover:border-gray-200 dark:hover:border-gray-700',
@@ -159,6 +223,64 @@ const SnippetList: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Context Menu */}
+      <ContextMenu
+        isOpen={isOpen}
+        position={position}
+        snippet={targetSnippet}
+        folders={folders}
+        currentFolder={targetSnippet?.category || 'uncategorized'}
+        onClose={closeContextMenu}
+        onMoveToFolder={handleMoveToFolder}
+        onEdit={handleEditSnippet}
+        onDuplicate={handleDuplicateSnippet}
+        onDelete={handleDeleteSnippet}
+      />
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-sm mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              Excluir snippet
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Tem certeza que deseja excluir "{targetSnippet?.title}"? Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      <NewSnippetModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false)
+          setEditingSnippet(null)
+        }}
+        editSnippet={editingSnippet}
+      />
+
+      {/* New Snippet Modal */}
+      <NewSnippetModal
+        isOpen={showNewModal}
+        onClose={() => setShowNewModal(false)}
+      />
     </div>
   )
 }
