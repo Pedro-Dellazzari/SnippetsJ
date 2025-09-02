@@ -39,6 +39,7 @@ export interface Tag {
 export interface Folder {
   id: string
   name: string
+  parentId?: string
   createdAt: string
   updatedAt: string
 }
@@ -47,6 +48,7 @@ export interface ProjectItem {
   id: string
   name: string
   description?: string
+  parentId?: string
   createdAt: string
   updatedAt: string
 }

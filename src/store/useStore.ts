@@ -35,15 +35,17 @@ interface StoreActions {
     mostUsed: number
   }
   // Folders
-  addFolder: (name: string) => void
+  addFolder: (name: string, parentId?: string) => void
   updateFolder: (id: string, updates: Partial<Folder>) => void
   deleteFolder: (id: string) => void
   forceDeleteFolder: (id: string) => void
+  getDescendantFolders: (folderId: string) => Folder[]
   // Project Items
-  addProjectItem: (name: string, description?: string) => void
+  addProjectItem: (name: string, description?: string, parentId?: string) => void
   updateProjectItem: (id: string, updates: Partial<ProjectItem>) => void
   deleteProjectItem: (id: string) => void
   forceDeleteProjectItem: (id: string) => void
+  getDescendantProjects: (projectId: string) => ProjectItem[]
   // Navigation
   setSelectedFolder: (folderId: string | null) => void
   setSelectedProject: (projectId: string | null) => void
@@ -403,10 +405,11 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
   },
 
   // Folders CRUD
-  addFolder: (name) => {
+  addFolder: (name, parentId) => {
     const newFolder: Folder = {
       id: crypto.randomUUID(),
       name: name.trim(),
+      parentId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }
@@ -450,11 +453,12 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
   },
 
   // Project Items CRUD
-  addProjectItem: (name, description) => {
+  addProjectItem: (name, description, parentId) => {
     const newProjectItem: ProjectItem = {
       id: crypto.randomUUID(),
       name: name.trim(),
       description: description?.trim(),
+      parentId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }
@@ -553,5 +557,38 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
     if (state.selectedProjectId === id) {
       set({ selectedProjectId: null })
     }
+  },
+
+  // Helper methods for hierarchical operations
+  getDescendantFolders: (folderId) => {
+    const state = get()
+    const descendants: Folder[] = []
+    
+    const findDescendants = (parentId: string) => {
+      const children = state.folders.filter(folder => folder.parentId === parentId)
+      for (const child of children) {
+        descendants.push(child)
+        findDescendants(child.id)
+      }
+    }
+    
+    findDescendants(folderId)
+    return descendants
+  },
+
+  getDescendantProjects: (projectId) => {
+    const state = get()
+    const descendants: ProjectItem[] = []
+    
+    const findDescendants = (parentId: string) => {
+      const children = state.projectItems.filter(project => project.parentId === parentId)
+      for (const child of children) {
+        descendants.push(child)
+        findDescendants(child.id)
+      }
+    }
+    
+    findDescendants(projectId)
+    return descendants
   }
 }))

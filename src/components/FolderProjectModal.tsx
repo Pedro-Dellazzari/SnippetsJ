@@ -8,19 +8,22 @@ interface FolderProjectModalProps {
   onClose: () => void
   type: 'folder' | 'project'
   editItem?: Folder | ProjectItem
+  parentId?: string
 }
 
 const FolderProjectModal: React.FC<FolderProjectModalProps> = ({
   isOpen,
   onClose,
   type,
-  editItem
+  editItem,
+  parentId
 }) => {
-  const { addFolder, updateFolder, addProjectItem, updateProjectItem } = useStore()
+  const { addFolder, updateFolder, addProjectItem, updateProjectItem, folders, projectItems } = useStore()
   
   const [formData, setFormData] = useState({
     name: '',
-    description: ''
+    description: '',
+    parentId: parentId || ''
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -29,14 +32,19 @@ const FolderProjectModal: React.FC<FolderProjectModalProps> = ({
       if (editItem) {
         setFormData({
           name: editItem.name,
-          description: 'description' in editItem ? editItem.description || '' : ''
+          description: 'description' in editItem ? editItem.description || '' : '',
+          parentId: editItem.parentId || ''
         })
       } else {
-        setFormData({ name: '', description: '' })
+        setFormData({ 
+          name: '', 
+          description: '', 
+          parentId: parentId || '' 
+        })
       }
       setErrors({})
     }
-  }, [isOpen, editItem])
+  }, [isOpen, editItem, parentId])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -68,9 +76,9 @@ const FolderProjectModal: React.FC<FolderProjectModalProps> = ({
       } else {
         // Create mode
         if (type === 'folder') {
-          addFolder(formData.name.trim())
+          addFolder(formData.name.trim(), formData.parentId || undefined)
         } else {
-          addProjectItem(formData.name.trim(), formData.description.trim() || undefined)
+          addProjectItem(formData.name.trim(), formData.description.trim() || undefined, formData.parentId || undefined)
         }
       }
       
@@ -85,6 +93,32 @@ const FolderProjectModal: React.FC<FolderProjectModalProps> = ({
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }))
     }
+  }
+
+  // Build hierarchical options for parent selection
+  const getParentOptions = () => {
+    const items = type === 'folder' ? folders : projectItems
+    const options: { id: string; name: string; level: number }[] = [
+      { id: '', name: 'Nenhum (raiz)', level: 0 }
+    ]
+
+    const buildHierarchy = (parentId: string | undefined, level: number) => {
+      const children = items.filter(item => item.parentId === parentId)
+      children.forEach(item => {
+        // Don't allow selecting the item being edited as its own parent
+        if (!editItem || item.id !== editItem.id) {
+          options.push({
+            id: item.id,
+            name: item.name,
+            level
+          })
+          buildHierarchy(item.id, level + 1)
+        }
+      })
+    }
+
+    buildHierarchy(undefined, 0)
+    return options
   }
 
   if (!isOpen) return null
@@ -124,6 +158,25 @@ const FolderProjectModal: React.FC<FolderProjectModalProps> = ({
               {errors.name && (
                 <p className="text-red-500 text-sm mt-1">{errors.name}</p>
               )}
+            </div>
+
+            {/* Parent Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {type === 'folder' ? 'Pasta pai' : 'Projeto pai'}
+              </label>
+              <select
+                value={formData.parentId}
+                onChange={(e) => handleChange('parentId', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors dark:bg-gray-700 dark:text-gray-100"
+              >
+                {getParentOptions().map(option => (
+                  <option key={option.id} value={option.id}>
+                    {'  '.repeat(option.level)}
+                    {option.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {isProject && (

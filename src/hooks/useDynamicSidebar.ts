@@ -1,6 +1,79 @@
 import { useMemo } from 'react'
 import { useStore } from '../store/useStore'
-import { SidebarSection } from '../types/sidebar'
+import { SidebarSection, SidebarItem } from '../types/sidebar'
+import { Folder, ProjectItem } from '../types'
+
+// Helper function to build hierarchical folder structure
+function buildFolderHierarchy(folders: Folder[], counts: any): SidebarItem[] {
+  const folderMap = new Map<string, SidebarItem>()
+  
+  // Create sidebar items for all folders
+  folders.forEach(folder => {
+    folderMap.set(folder.id, {
+      id: `folder-${folder.id}`,
+      label: folder.name,
+      icon: 'folder',
+      count: counts.folderCounts[folder.id] || 0,
+      type: 'folder' as const,
+      children: []
+    })
+  })
+  
+  // Build hierarchy
+  const rootItems: SidebarItem[] = []
+  
+  folders.forEach(folder => {
+    const item = folderMap.get(folder.id)!
+    
+    if (folder.parentId) {
+      const parent = folderMap.get(folder.parentId)
+      if (parent) {
+        parent.children = parent.children || []
+        parent.children.push(item)
+      }
+    } else {
+      rootItems.push(item)
+    }
+  })
+  
+  return rootItems
+}
+
+// Helper function to build hierarchical project structure  
+function buildProjectHierarchy(projects: ProjectItem[], counts: any): SidebarItem[] {
+  const projectMap = new Map<string, SidebarItem>()
+  
+  // Create sidebar items for all projects
+  projects.forEach(project => {
+    projectMap.set(project.id, {
+      id: `project-${project.id}`,
+      label: project.name,
+      icon: 'rocket-launch',
+      count: counts.projectItemCounts[project.id] || 0,
+      type: 'folder' as const,
+      children: []
+    })
+  })
+  
+  // Build hierarchy
+  const rootItems: SidebarItem[] = []
+  
+  projects.forEach(project => {
+    const item = projectMap.get(project.id)!
+    
+    if (project.parentId) {
+      const parent = projectMap.get(project.parentId)
+      if (parent) {
+        parent.children = parent.children || []
+        parent.children.push(item)
+      }
+    } else {
+      rootItems.push(item)
+    }
+  })
+  
+  return rootItems
+}
 
 export function useDynamicSidebar(): SidebarSection[] {
   const snippets = useStore(state => state.snippets)
@@ -66,14 +139,8 @@ export function useDynamicSidebar(): SidebarSection[] {
             type: 'folder' as const,
             isSpecial: true
           },
-          // Lista de folders existentes
-          ...folders.map(folder => ({
-            id: `folder-${folder.id}`,
-            label: folder.name,
-            icon: 'folder',
-            count: counts.folderCounts[folder.id] || 0,
-            type: 'folder' as const
-          }))
+          // Lista hierárquica de folders
+          ...buildFolderHierarchy(folders, counts)
         ]
       },
       {
@@ -102,14 +169,8 @@ export function useDynamicSidebar(): SidebarSection[] {
             type: 'folder' as const,
             isSpecial: true
           },
-          // Lista de projetos existentes
-          ...projectItems.map(project => ({
-            id: `project-${project.id}`,
-            label: project.name,
-            icon: 'rocket-launch',
-            count: counts.projectItemCounts[project.id] || 0,
-            type: 'folder' as const
-          }))
+          // Lista hierárquica de projetos
+          ...buildProjectHierarchy(projectItems, counts)
         ]
       }
     ]

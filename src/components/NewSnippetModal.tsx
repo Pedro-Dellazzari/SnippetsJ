@@ -18,6 +18,8 @@ interface NewSnippetModalProps {
 const NewSnippetModal: React.FC<NewSnippetModalProps> = ({ isOpen, onClose, editSnippet }) => {
   const addSnippet = useStore(state => state.addSnippet)
   const updateSnippet = useStore(state => state.updateSnippet)
+  const folders = useStore(state => state.folders)
+  const projectItems = useStore(state => state.projectItems)
   const { toast, success, error, hideToast } = useToast()
   
   const [formData, setFormData] = useState({
@@ -25,7 +27,9 @@ const NewSnippetModal: React.FC<NewSnippetModalProps> = ({ isOpen, onClose, edit
     description: '',
     language: '',
     tags: '',
-    content: ''
+    content: '',
+    folderId: '',
+    projectId: ''
   })
   
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -59,7 +63,9 @@ const NewSnippetModal: React.FC<NewSnippetModalProps> = ({ isOpen, onClose, edit
           description: editSnippet.description,
           language: editSnippet.language,
           tags: editSnippet.tags.join(', '),
-          content: editSnippet.content
+          content: editSnippet.content,
+          folderId: editSnippet.folderId || '',
+          projectId: editSnippet.projectId || ''
         })
       } else {
         // Reset for new snippet
@@ -68,7 +74,9 @@ const NewSnippetModal: React.FC<NewSnippetModalProps> = ({ isOpen, onClose, edit
           description: '',
           language: '',
           tags: '',
-          content: ''
+          content: '',
+          folderId: '',
+          projectId: ''
         })
       }
       setErrors({})
@@ -147,7 +155,9 @@ const NewSnippetModal: React.FC<NewSnippetModalProps> = ({ isOpen, onClose, edit
           content: formData.content.trim(),
           language: formData.language.trim().toLowerCase(),
           tags: tagsArray,
-          category: formData.language.trim()
+          category: formData.language.trim(),
+          folderId: formData.folderId || undefined,
+          projectId: formData.projectId || undefined
         })
         success('Snippet atualizado com sucesso!')
       } else {
@@ -160,10 +170,12 @@ const NewSnippetModal: React.FC<NewSnippetModalProps> = ({ isOpen, onClose, edit
           language: formData.language.trim().toLowerCase(),
           tags: tagsArray,
           category: formData.language.trim(),
+          folderId: formData.folderId || undefined,
+          projectId: formData.projectId || undefined,
           favorite: false,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-        usage_count: 0
+          usage_count: 0
         }
         
         addSnippet(newSnippet)
@@ -188,6 +200,49 @@ const NewSnippetModal: React.FC<NewSnippetModalProps> = ({ isOpen, onClose, edit
     if (isSubmitting) return
     onClose()
   }, [isSubmitting, onClose])
+
+  // Build hierarchical options for folder/project selection
+  const getFolderOptions = () => {
+    const options: { id: string; name: string; level: number }[] = [
+      { id: '', name: 'Nenhuma pasta', level: 0 }
+    ]
+
+    const buildHierarchy = (parentId: string | undefined, level: number) => {
+      const children = folders.filter(folder => folder.parentId === parentId)
+      children.forEach(folder => {
+        options.push({
+          id: folder.id,
+          name: folder.name,
+          level
+        })
+        buildHierarchy(folder.id, level + 1)
+      })
+    }
+
+    buildHierarchy(undefined, 0)
+    return options
+  }
+
+  const getProjectOptions = () => {
+    const options: { id: string; name: string; level: number }[] = [
+      { id: '', name: 'Nenhum projeto', level: 0 }
+    ]
+
+    const buildHierarchy = (parentId: string | undefined, level: number) => {
+      const children = projectItems.filter(project => project.parentId === parentId)
+      children.forEach(project => {
+        options.push({
+          id: project.id,
+          name: project.name,
+          level
+        })
+        buildHierarchy(project.id, level + 1)
+      })
+    }
+
+    buildHierarchy(undefined, 0)
+    return options
+  }
 
   const handleInputChange = useCallback((field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -335,6 +390,49 @@ const NewSnippetModal: React.FC<NewSnippetModalProps> = ({ isOpen, onClose, edit
                       })}
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* Folder and Project Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="folderId" className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">
+                    📁 Pasta
+                  </label>
+                  <select
+                    id="folderId"
+                    value={formData.folderId}
+                    onChange={(e) => handleInputChange('folderId', e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900"
+                    disabled={isSubmitting}
+                  >
+                    {getFolderOptions().map(option => (
+                      <option key={option.id} value={option.id}>
+                        {'  '.repeat(option.level)}
+                        {option.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="projectId" className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">
+                    🚀 Projeto
+                  </label>
+                  <select
+                    id="projectId"
+                    value={formData.projectId}
+                    onChange={(e) => handleInputChange('projectId', e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900"
+                    disabled={isSubmitting}
+                  >
+                    {getProjectOptions().map(option => (
+                      <option key={option.id} value={option.id}>
+                        {'  '.repeat(option.level)}
+                        {option.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
               

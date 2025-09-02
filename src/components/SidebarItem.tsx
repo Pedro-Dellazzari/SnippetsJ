@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { SidebarItem as SidebarItemType } from '../types/sidebar'
 import { useStore } from '../store/useStore'
 import SidebarIcon from './SidebarIcon'
+import FolderProjectContextMenu, { FolderProjectContextMenuPosition } from './FolderProjectContextMenu'
 import clsx from 'clsx'
 
 interface SidebarItemProps {
@@ -21,9 +22,16 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
   onSelect,
   onToggle
 }) => {
-  const { setSelectedFolder, setSelectedProject, updateFolder, updateProjectItem } = useStore()
+  const { setSelectedFolder, setSelectedProject, updateFolder, updateProjectItem, addFolder, addProjectItem } = useStore()
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(item.label)
+  const [contextMenu, setContextMenu] = useState<{
+    isOpen: boolean
+    position: FolderProjectContextMenuPosition
+  }>({
+    isOpen: false,
+    position: { x: 0, y: 0 }
+  })
   const inputRef = useRef<HTMLInputElement>(null)
   
   const hasChildren = item.children && item.children.length > 0
@@ -79,6 +87,54 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
     if (canEdit && !isEditing) {
       setIsEditing(true)
       setEditValue(item.label)
+    }
+  }
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (!canEdit) return
+    
+    e.preventDefault()
+    e.stopPropagation()
+    
+    setContextMenu({
+      isOpen: true,
+      position: { x: e.clientX, y: e.clientY }
+    })
+  }
+
+  const handleCloseContextMenu = () => {
+    setContextMenu(prev => ({ ...prev, isOpen: false }))
+  }
+
+  const handleCreateSubfolder = (parentId: string) => {
+    const realParentId = parentId.startsWith('folder-') ? parentId.replace('folder-', '') : parentId.replace('project-', '')
+    window.dispatchEvent(new CustomEvent('openFolderModal', { 
+      detail: { type: 'folder', parentId: realParentId } 
+    }))
+  }
+
+  const handleCreateSubproject = (parentId: string) => {
+    const realParentId = parentId.startsWith('folder-') ? parentId.replace('folder-', '') : parentId.replace('project-', '')
+    window.dispatchEvent(new CustomEvent('openProjectModal', { 
+      detail: { type: 'project', parentId: realParentId } 
+    }))
+  }
+
+  const handleRename = (itemId: string) => {
+    setIsEditing(true)
+  }
+
+  const handleDelete = (itemId: string) => {
+    if (itemId.startsWith('folder-')) {
+      const folderId = itemId.replace('folder-', '')
+      window.dispatchEvent(new CustomEvent('deleteFolderWithSnippets', { 
+        detail: { folderId } 
+      }))
+    } else if (itemId.startsWith('project-')) {
+      const projectId = itemId.replace('project-', '')
+      window.dispatchEvent(new CustomEvent('deleteProjectWithSnippets', { 
+        detail: { projectId } 
+      }))
     }
   }
 
@@ -177,6 +233,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
       <div
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
+        onContextMenu={handleContextMenu}
         className={clsx(
           'flex items-center gap-3 py-2 pr-3 cursor-pointer transition-all duration-200 group relative rounded-md mx-1',
           getItemStyles(),
@@ -292,6 +349,20 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
           ))}
         </div>
       )}
+
+      {/* Context Menu */}
+      <FolderProjectContextMenu
+        isOpen={contextMenu.isOpen}
+        position={contextMenu.position}
+        itemType={item.id.startsWith('folder-') ? 'folder' : 'project'}
+        itemId={item.id}
+        itemName={item.label}
+        onClose={handleCloseContextMenu}
+        onCreateSubfolder={handleCreateSubfolder}
+        onCreateSubproject={handleCreateSubproject}
+        onRename={handleRename}
+        onDelete={handleDelete}
+      />
     </div>
   )
 }

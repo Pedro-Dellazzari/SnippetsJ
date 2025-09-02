@@ -25,6 +25,7 @@ const Sidebar: React.FC = () => {
     isOpen: boolean
     type: 'folder' | 'project' | null
     editItem?: any
+    parentId?: string
   }>({
     isOpen: false,
     type: null
@@ -45,12 +46,14 @@ const Sidebar: React.FC = () => {
   })
 
   useEffect(() => {
-    const handleOpenFolderModal = () => {
-      setModalState({ isOpen: true, type: 'folder' })
+    const handleOpenFolderModal = (event?: CustomEvent) => {
+      const parentId = event?.detail?.parentId
+      setModalState({ isOpen: true, type: 'folder', parentId })
     }
 
-    const handleOpenProjectModal = () => {
-      setModalState({ isOpen: true, type: 'project' })
+    const handleOpenProjectModal = (event?: CustomEvent) => {
+      const parentId = event?.detail?.parentId
+      setModalState({ isOpen: true, type: 'project', parentId })
     }
 
     const handleDeleteFolder = (event: CustomEvent) => {
@@ -101,7 +104,7 @@ const Sidebar: React.FC = () => {
   }, [folders, projectItems, getSnippetCounts])
 
   const closeModal = () => {
-    setModalState({ isOpen: false, type: null })
+    setModalState({ isOpen: false, type: null, parentId: undefined })
   }
 
   const closeDeleteModal = () => {
@@ -148,6 +151,7 @@ const Sidebar: React.FC = () => {
         onClose={closeModal}
         type={modalState.type || 'folder'}
         editItem={modalState.editItem}
+        parentId={modalState.parentId}
       />
 
       {/* Delete Confirmation Modal */}
