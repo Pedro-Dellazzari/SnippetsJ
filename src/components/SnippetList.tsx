@@ -7,7 +7,7 @@ import { getLanguageColor, getTagColor } from '../utils/colors'
 import { HeartIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid'
 import Tooltip from './Tooltip'
-import ContextMenu, { ContextMenuFolder } from './ContextMenu'
+import ContextMenu, { ContextMenuFolder, ContextMenuProject } from './ContextMenu'
 import { useContextMenu } from '../hooks/useContextMenu'
 import { useFocusMode } from '../contexts/FocusModeContext'
 import { useSidebarState } from '../hooks/useSidebarState'
@@ -120,43 +120,49 @@ const SnippetList: React.FC = () => {
     return 'Snippets'
   }
 
-  // Real folders and projects for the context menu
-  const contextMenuFolders: ContextMenuFolder[] = [
-    { id: 'no-folder', name: 'Sem pasta', level: 0 },
-    ...folders.map(folder => ({ 
-      id: `folder-${folder.id}`, 
-      name: `📁 ${folder.name}`, 
-      level: 0 
-    })),
-    ...projectItems.map(project => ({ 
-      id: `project-${project.id}`, 
-      name: `🚀 ${project.name}`, 
-      level: 0 
-    }))
-  ]
+  // Separate folders and projects for the context menu
+  const contextMenuFolders: ContextMenuFolder[] = folders.map(folder => ({ 
+    id: folder.id, 
+    name: folder.name, 
+    level: 0 
+  }))
+
+  const contextMenuProjects: ContextMenuProject[] = projectItems.map(project => ({ 
+    id: project.id, 
+    name: project.name, 
+    level: 0 
+  }))
 
   const handleMoveToFolder = (folderId: string) => {
     if (!targetSnippet) return
 
-    if (folderId === 'no-folder') {
-      // Remove from any folder or project
+    if (folderId === '') {
+      // Remove from any folder (keep project if it exists)
       updateSnippet(targetSnippet.id, { 
-        folderId: undefined, 
+        folderId: undefined 
+      })
+    } else {
+      // Move to folder (and clear project due to exclusivity)
+      updateSnippet(targetSnippet.id, { 
+        folderId: folderId, 
         projectId: undefined 
       })
-    } else if (folderId.startsWith('folder-')) {
-      // Move to folder
-      const realFolderId = folderId.replace('folder-', '')
+    }
+  }
+
+  const handleMoveToProject = (projectId: string) => {
+    if (!targetSnippet) return
+
+    if (projectId === '') {
+      // Remove from any project (keep folder if it exists)
       updateSnippet(targetSnippet.id, { 
-        folderId: realFolderId, 
         projectId: undefined 
       })
-    } else if (folderId.startsWith('project-')) {
-      // Move to project
-      const realProjectId = folderId.replace('project-', '')
+    } else {
+      // Move to project (and clear folder due to exclusivity)
       updateSnippet(targetSnippet.id, { 
         folderId: undefined, 
-        projectId: realProjectId 
+        projectId: projectId 
       })
     }
   }
@@ -480,15 +486,12 @@ const SnippetList: React.FC = () => {
         isOpen={isOpen}
         position={position}
         folders={contextMenuFolders}
-        currentFolder={
-          targetSnippet?.folderId 
-            ? `folder-${targetSnippet.folderId}` 
-            : targetSnippet?.projectId 
-              ? `project-${targetSnippet.projectId}`
-              : 'no-folder'
-        }
+        projects={contextMenuProjects}
+        currentFolder={targetSnippet?.folderId}
+        currentProject={targetSnippet?.projectId}
         onClose={closeContextMenu}
         onMoveToFolder={handleMoveToFolder}
+        onMoveToProject={handleMoveToProject}
       />
 
       {/* Delete Confirmation Modal */}

@@ -23,7 +23,8 @@ const SnippetDetail: React.FC = () => {
     toggleFavorite, 
     incrementUsageCount,
     updateSnippet,
-    deleteSnippet
+    deleteSnippet,
+    projectItems
   } = useStore()
   
   const { isFocusMode, toggleFocusMode } = useFocusMode()
@@ -397,9 +398,9 @@ const SnippetDetail: React.FC = () => {
             </Tooltip>
           )}
           
-          {selectedSnippet.project && (
+          {selectedSnippet.projectId && (
             <div className="flex items-center gap-2 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 px-3 py-1 rounded-full">
-              <span className="text-sm font-medium">{selectedSnippet.project}</span>
+              <span className="text-sm font-medium">{projectItems.find(p => p.id === selectedSnippet.projectId)?.name || 'Projeto'}</span>
             </div>
           )}
         </div>
@@ -440,7 +441,7 @@ const SnippetDetail: React.FC = () => {
               cursorBlinking: 'smooth',
               renderLineHighlight: 'none',
               selectionHighlight: false,
-              occurrencesHighlight: false
+              occurrencesHighlight: "off"
             }}
             loading={
               <div className="flex items-center justify-center h-full text-gray-500">

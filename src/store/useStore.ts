@@ -431,18 +431,26 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
 
   deleteFolder: (id) => {
     const state = get()
-    const snippetsInFolder = state.snippets.filter(snippet => snippet.folderId === id)
     
-    // If folder contains snippets, dispatch event for confirmation modal
-    if (snippetsInFolder.length > 0) {
+    // Get all descendant folders
+    const descendantFolders = get().getDescendantFolders(id)
+    const allFolderIds = [id, ...descendantFolders.map(f => f.id)]
+    
+    // Check for snippets in this folder and all descendant folders
+    const snippetsInHierarchy = state.snippets.filter(snippet => 
+      allFolderIds.includes(snippet.folderId || '')
+    )
+    
+    // If hierarchy contains snippets, dispatch event for confirmation modal
+    if (snippetsInHierarchy.length > 0) {
       window.dispatchEvent(new CustomEvent('deleteFolderWithSnippets', { 
         detail: { folderId: id } 
       }))
       return
     }
     
-    // Remove folder (no snippets inside)
-    const newFolders = state.folders.filter(folder => folder.id !== id)
+    // Remove folder and all descendants (no snippets inside hierarchy)
+    const newFolders = state.folders.filter(folder => !allFolderIds.includes(folder.id))
     set({ folders: newFolders })
     storage.saveFolders(newFolders)
     
@@ -480,20 +488,42 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
 
   deleteProjectItem: (id) => {
     const state = get()
-    const snippetsInProject = state.snippets.filter(snippet => snippet.projectId === id)
     
-    // If project contains snippets, dispatch event for confirmation modal
-    if (snippetsInProject.length > 0) {
+    // Get all descendant projects (note: only folders can be descendants of projects)
+    // But we need to check descendant folders that might be in this project's hierarchy
+    const descendantProjects = get().getDescendantProjects(id)
+    const allProjectIds = [id, ...descendantProjects.map(p => p.id)]
+    
+    // Also get folders that are children of this project hierarchy
+    const foldersInProjectHierarchy = state.folders.filter(folder => 
+      allProjectIds.includes(folder.parentId || '')
+    )
+    
+    // Check for snippets in this project, descendants, and child folders
+    const snippetsInHierarchy = state.snippets.filter(snippet => 
+      allProjectIds.includes(snippet.projectId || '') ||
+      foldersInProjectHierarchy.some(f => f.id === snippet.folderId)
+    )
+    
+    // If hierarchy contains snippets, dispatch event for confirmation modal
+    if (snippetsInHierarchy.length > 0) {
       window.dispatchEvent(new CustomEvent('deleteProjectWithSnippets', { 
         detail: { projectId: id } 
       }))
       return
     }
     
-    // Remove project (no snippets inside)
-    const newProjectItems = state.projectItems.filter(project => project.id !== id)
+    // Remove project and descendants (no snippets inside hierarchy)
+    const newProjectItems = state.projectItems.filter(project => !allProjectIds.includes(project.id))
     set({ projectItems: newProjectItems })
     storage.saveProjectItems(newProjectItems)
+    
+    // Also remove child folders
+    const newFolders = state.folders.filter(folder => 
+      !foldersInProjectHierarchy.some(f => f.id === folder.id)
+    )
+    set({ folders: newFolders })
+    storage.saveFolders(newFolders)
     
     // Clear selection if this project was selected
     if (state.selectedProjectId === id) {
@@ -516,14 +546,18 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
   forceDeleteFolder: (id) => {
     const state = get()
     
-    // Remove folder
-    const newFolders = state.folders.filter(folder => folder.id !== id)
+    // Get all descendant folders
+    const descendantFolders = get().getDescendantFolders(id)
+    const allFolderIds = [id, ...descendantFolders.map(f => f.id)]
+    
+    // Remove folder and all descendants
+    const newFolders = state.folders.filter(folder => !allFolderIds.includes(folder.id))
     set({ folders: newFolders })
     storage.saveFolders(newFolders)
     
-    // Remove folderId from snippets that were in this folder
+    // Remove folderId from snippets that were in any of these folders
     const newSnippets = state.snippets.map(snippet =>
-      snippet.folderId === id 
+      allFolderIds.includes(snippet.folderId || '')
         ? { ...snippet, folderId: undefined, updatedAt: new Date().toISOString() }
         : snippet
     )
@@ -539,17 +573,42 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
   forceDeleteProjectItem: (id) => {
     const state = get()
     
-    // Remove project
-    const newProjectItems = state.projectItems.filter(project => project.id !== id)
+    // Get all descendant projects  
+    const descendantProjects = get().getDescendantProjects(id)
+    const allProjectIds = [id, ...descendantProjects.map(p => p.id)]
+    
+    // Also get folders that are children of this project hierarchy
+    const foldersInProjectHierarchy = state.folders.filter(folder => 
+      allProjectIds.includes(folder.parentId || '')
+    )
+    const allFolderIds = foldersInProjectHierarchy.map(f => f.id)
+    
+    // Remove project and descendants
+    const newProjectItems = state.projectItems.filter(project => !allProjectIds.includes(project.id))
     set({ projectItems: newProjectItems })
     storage.saveProjectItems(newProjectItems)
     
-    // Remove projectId from snippets that were in this project
-    const newSnippets = state.snippets.map(snippet =>
-      snippet.projectId === id 
-        ? { ...snippet, projectId: undefined, updatedAt: new Date().toISOString() }
-        : snippet
-    )
+    // Remove child folders  
+    const newFolders = state.folders.filter(folder => !allFolderIds.includes(folder.id))
+    set({ folders: newFolders })
+    storage.saveFolders(newFolders)
+    
+    // Remove projectId/folderId from snippets that were in this hierarchy
+    const newSnippets = state.snippets.map(snippet => {
+      let updatedSnippet = { ...snippet }
+      
+      if (allProjectIds.includes(snippet.projectId || '')) {
+        updatedSnippet.projectId = undefined
+        updatedSnippet.updatedAt = new Date().toISOString()
+      }
+      
+      if (allFolderIds.includes(snippet.folderId || '')) {
+        updatedSnippet.folderId = undefined
+        updatedSnippet.updatedAt = new Date().toISOString()
+      }
+      
+      return updatedSnippet
+    })
     set({ snippets: newSnippets })
     storage.saveSnippets(newSnippets)
     

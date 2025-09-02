@@ -114,10 +114,8 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
   }
 
   const handleCreateSubproject = (parentId: string) => {
-    const realParentId = parentId.startsWith('folder-') ? parentId.replace('folder-', '') : parentId.replace('project-', '')
-    window.dispatchEvent(new CustomEvent('openProjectModal', { 
-      detail: { type: 'project', parentId: realParentId } 
-    }))
+    // This should never be called due to hierarchy rules, but kept for interface compatibility
+    console.warn('Creating subprojects is not allowed according to hierarchy rules')
   }
 
   const handleRename = (itemId: string) => {

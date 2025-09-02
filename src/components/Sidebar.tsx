@@ -90,14 +90,14 @@ const Sidebar: React.FC = () => {
       }
     }
 
-    window.addEventListener('openFolderModal', handleOpenFolderModal)
-    window.addEventListener('openProjectModal', handleOpenProjectModal)
+    window.addEventListener('openFolderModal', handleOpenFolderModal as EventListener)
+    window.addEventListener('openProjectModal', handleOpenProjectModal as EventListener)
     window.addEventListener('deleteFolderWithSnippets', handleDeleteFolder as EventListener)
     window.addEventListener('deleteProjectWithSnippets', handleDeleteProject as EventListener)
 
     return () => {
-      window.removeEventListener('openFolderModal', handleOpenFolderModal)
-      window.removeEventListener('openProjectModal', handleOpenProjectModal)
+      window.removeEventListener('openFolderModal', handleOpenFolderModal as EventListener)
+      window.removeEventListener('openProjectModal', handleOpenProjectModal as EventListener)
       window.removeEventListener('deleteFolderWithSnippets', handleDeleteFolder as EventListener)
       window.removeEventListener('deleteProjectWithSnippets', handleDeleteProject as EventListener)
     }

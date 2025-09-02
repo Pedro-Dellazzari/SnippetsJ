@@ -78,7 +78,8 @@ const FolderProjectModal: React.FC<FolderProjectModalProps> = ({
         if (type === 'folder') {
           addFolder(formData.name.trim(), formData.parentId || undefined)
         } else {
-          addProjectItem(formData.name.trim(), formData.description.trim() || undefined, formData.parentId || undefined)
+          // Projects are always created at root level (no parentId)
+          addProjectItem(formData.name.trim(), formData.description.trim() || undefined, undefined)
         }
       }
       
@@ -97,27 +98,52 @@ const FolderProjectModal: React.FC<FolderProjectModalProps> = ({
 
   // Build hierarchical options for parent selection
   const getParentOptions = () => {
-    const items = type === 'folder' ? folders : projectItems
     const options: { id: string; name: string; level: number }[] = [
       { id: '', name: 'Nenhum (raiz)', level: 0 }
     ]
 
-    const buildHierarchy = (parentId: string | undefined, level: number) => {
-      const children = items.filter(item => item.parentId === parentId)
-      children.forEach(item => {
-        // Don't allow selecting the item being edited as its own parent
-        if (!editItem || item.id !== editItem.id) {
+    if (type === 'folder') {
+      // Folders can be created inside:
+      // 1. Other folders (creating subfolders)
+      // 2. Projects (projects can contain folders)
+      
+      // Add folders as potential parents
+      const buildFolderHierarchy = (parentId: string | undefined, level: number) => {
+        const children = folders.filter(folder => folder.parentId === parentId)
+        children.forEach(folder => {
+          // Don't allow selecting the item being edited as its own parent
+          if (!editItem || folder.id !== editItem.id) {
+            options.push({
+              id: folder.id,
+              name: `📁 ${folder.name}`,
+              level
+            })
+            buildFolderHierarchy(folder.id, level + 1)
+          }
+        })
+      }
+      
+      // Add projects as potential parents (projects can contain folders)
+      const buildProjectHierarchy = (parentId: string | undefined, level: number) => {
+        const children = projectItems.filter(project => project.parentId === parentId)
+        children.forEach(project => {
           options.push({
-            id: item.id,
-            name: item.name,
+            id: project.id,
+            name: `🚀 ${project.name}`,
             level
           })
-          buildHierarchy(item.id, level + 1)
-        }
-      })
+          buildProjectHierarchy(project.id, level + 1)
+        })
+      }
+      
+      buildFolderHierarchy(undefined, 0)
+      buildProjectHierarchy(undefined, 0)
+    } else {
+      // Projects can ONLY be created at root level (no nesting inside folders or other projects)
+      // According to the rules: no projects inside folders, no subprojects
+      // So projects can only have parentId = undefined (root level)
     }
 
-    buildHierarchy(undefined, 0)
     return options
   }
 
@@ -160,24 +186,26 @@ const FolderProjectModal: React.FC<FolderProjectModalProps> = ({
               )}
             </div>
 
-            {/* Parent Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                {type === 'folder' ? 'Pasta pai' : 'Projeto pai'}
-              </label>
-              <select
-                value={formData.parentId}
-                onChange={(e) => handleChange('parentId', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors dark:bg-gray-700 dark:text-gray-100"
-              >
-                {getParentOptions().map(option => (
-                  <option key={option.id} value={option.id}>
-                    {'  '.repeat(option.level)}
-                    {option.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Parent Selection - Only for folders */}
+            {type === 'folder' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Pasta pai
+                </label>
+                <select
+                  value={formData.parentId}
+                  onChange={(e) => handleChange('parentId', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors dark:bg-gray-700 dark:text-gray-100"
+                >
+                  {getParentOptions().map(option => (
+                    <option key={option.id} value={option.id}>
+                      {'  '.repeat(option.level)}
+                      {option.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {isProject && (
               <div>

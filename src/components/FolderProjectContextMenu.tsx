@@ -40,19 +40,22 @@ const FolderProjectContextMenu: React.FC<FolderProjectContextMenuProps> = ({
 }) => {
   const menuRef = useRef<HTMLDivElement>(null)
 
+  // Define menu items based on hierarchy rules
   const menuItems = [
+    // Always allow creating subfolders
     { 
       id: 'add-subfolder', 
       label: '➕ Nova subpasta...', 
       icon: FolderPlusIcon,
       action: () => onCreateSubfolder(itemId)
     },
-    { 
-      id: 'add-subproject', 
-      label: '➕ Novo subprojeto...', 
-      icon: RocketLaunchIcon,
-      action: () => onCreateSubproject(itemId)
-    },
+    // Only allow creating subprojects if the parent is NOT a folder and NOT already a project
+    // According to rules: Projects can only contain subfolders, no subprojects
+    ...(itemType === 'folder' ? [
+      // Folders CANNOT contain projects - removed this option
+    ] : [
+      // Projects CANNOT contain subprojects - removed this option
+    ]),
     { 
       id: 'rename', 
       label: '✏️ Renomear', 
