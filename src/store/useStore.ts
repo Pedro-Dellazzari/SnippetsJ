@@ -436,20 +436,7 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
     const descendantFolders = get().getDescendantFolders(id)
     const allFolderIds = [id, ...descendantFolders.map(f => f.id)]
     
-    // Check for snippets in this folder and all descendant folders
-    const snippetsInHierarchy = state.snippets.filter(snippet => 
-      allFolderIds.includes(snippet.folderId || '')
-    )
-    
-    // If hierarchy contains snippets, dispatch event for confirmation modal
-    if (snippetsInHierarchy.length > 0) {
-      window.dispatchEvent(new CustomEvent('deleteFolderWithSnippets', { 
-        detail: { folderId: id } 
-      }))
-      return
-    }
-    
-    // Remove folder and all descendants (no snippets inside hierarchy)
+    // Remove folder and all descendants
     const newFolders = state.folders.filter(folder => !allFolderIds.includes(folder.id))
     set({ folders: newFolders })
     storage.saveFolders(newFolders)
@@ -489,8 +476,7 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
   deleteProjectItem: (id) => {
     const state = get()
     
-    // Get all descendant projects (note: only folders can be descendants of projects)
-    // But we need to check descendant folders that might be in this project's hierarchy
+    // Get all descendant projects
     const descendantProjects = get().getDescendantProjects(id)
     const allProjectIds = [id, ...descendantProjects.map(p => p.id)]
     
@@ -499,21 +485,7 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
       allProjectIds.includes(folder.parentId || '')
     )
     
-    // Check for snippets in this project, descendants, and child folders
-    const snippetsInHierarchy = state.snippets.filter(snippet => 
-      allProjectIds.includes(snippet.projectId || '') ||
-      foldersInProjectHierarchy.some(f => f.id === snippet.folderId)
-    )
-    
-    // If hierarchy contains snippets, dispatch event for confirmation modal
-    if (snippetsInHierarchy.length > 0) {
-      window.dispatchEvent(new CustomEvent('deleteProjectWithSnippets', { 
-        detail: { projectId: id } 
-      }))
-      return
-    }
-    
-    // Remove project and descendants (no snippets inside hierarchy)
+    // Remove project and descendants
     const newProjectItems = state.projectItems.filter(project => !allProjectIds.includes(project.id))
     set({ projectItems: newProjectItems })
     storage.saveProjectItems(newProjectItems)

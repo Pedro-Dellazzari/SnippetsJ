@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { SidebarItem as SidebarItemType } from '../types/sidebar'
 import { useStore } from '../store/useStore'
+import { useInlineCreation } from '../hooks/useInlineCreation'
 import SidebarIcon from './SidebarIcon'
 import FolderProjectContextMenu, { FolderProjectContextMenuPosition } from './FolderProjectContextMenu'
 import clsx from 'clsx'
@@ -23,6 +24,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
   onToggle
 }) => {
   const { setSelectedFolder, setSelectedProject, updateFolder, updateProjectItem, addFolder, addProjectItem } = useStore()
+  const { startCreatingFolder, startCreatingProject, cancelCreation, finishCreation } = useInlineCreation()
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(item.label)
   const [contextMenu, setContextMenu] = useState<{
@@ -37,16 +39,17 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
   const hasChildren = item.children && item.children.length > 0
   const paddingLeft = 16 + (level * 20)
   const canEdit = (item.id.startsWith('folder-') || item.id.startsWith('project-')) && !item.isSpecial
+  const isCreating = item.isCreating || false
 
   const handleClick = () => {
     if (item.isSpecial) {
       // Lidar com botões especiais como "+ Nova pasta" e "+ Novo Projeto"
       if (item.id === 'add-folder') {
-        // Dispatch custom event to open folder modal
-        window.dispatchEvent(new CustomEvent('openFolderModal', { detail: { type: 'folder' } }))
+        // Start inline folder creation
+        startCreatingFolder()
       } else if (item.id === 'add-project') {
-        // Dispatch custom event to open project modal
-        window.dispatchEvent(new CustomEvent('openProjectModal', { detail: { type: 'project' } }))
+        // Start inline project creation
+        startCreatingProject()
       }
       return
     }
@@ -108,9 +111,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
 
   const handleCreateSubfolder = (parentId: string) => {
     const realParentId = parentId.startsWith('folder-') ? parentId.replace('folder-', '') : parentId.replace('project-', '')
-    window.dispatchEvent(new CustomEvent('openFolderModal', { 
-      detail: { type: 'folder', parentId: realParentId } 
-    }))
+    startCreatingFolder(realParentId)
   }
 
   const handleCreateSubproject = (parentId: string) => {
@@ -155,20 +156,54 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
     setIsEditing(false)
   }
 
+  const handleInlineCreateSubmit = () => {
+    const trimmedValue = editValue.trim()
+    if (trimmedValue) {
+      if (item.id === 'creating-folder') {
+        // Create new folder - check if we're creating in a parent
+        const creatingFolderState = useInlineCreation.getState().creatingFolder
+        const parentId = creatingFolderState === 'root' ? undefined : creatingFolderState
+        addFolder(trimmedValue, parentId)
+      } else if (item.id === 'creating-project') {
+        // Create new project - always at root level for now
+        addProjectItem(trimmedValue)
+      }
+      finishCreation()
+    } else {
+      cancelCreation()
+    }
+    setEditValue('')
+  }
+
+  const handleInlineCreateCancel = () => {
+    cancelCreation()
+    setEditValue('')
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleEditSubmit()
+      if (isCreating) {
+        handleInlineCreateSubmit()
+      } else {
+        handleEditSubmit()
+      }
     } else if (e.key === 'Escape') {
-      handleEditCancel()
+      if (isCreating) {
+        handleInlineCreateCancel()
+      } else {
+        handleEditCancel()
+      }
     }
   }
 
   useEffect(() => {
-    if (isEditing && inputRef.current) {
+    if ((isEditing || isCreating) && inputRef.current) {
       inputRef.current.focus()
-      inputRef.current.select()
+      if (isEditing) {
+        inputRef.current.select()
+      }
     }
-  }, [isEditing])
+  }, [isEditing, isCreating])
 
   useEffect(() => {
     setEditValue(item.label)
@@ -302,15 +337,16 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
         </div>
 
         {/* Label */}
-        {isEditing ? (
+        {(isEditing || isCreating) ? (
           <input
             ref={inputRef}
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
-            onBlur={handleEditSubmit}
+            onBlur={isCreating ? handleInlineCreateSubmit : handleEditSubmit}
             onKeyDown={handleKeyDown}
             className="flex-1 text-sm font-medium bg-white dark:bg-gray-700 border border-blue-500 rounded px-1 py-0.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
             onClick={(e) => e.stopPropagation()}
+            placeholder={isCreating ? (item.id === 'creating-folder' ? 'Nome da pasta...' : 'Nome do projeto...') : ''}
           />
         ) : (
           <span className={clsx(

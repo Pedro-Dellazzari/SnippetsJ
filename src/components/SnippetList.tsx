@@ -30,7 +30,9 @@ const SnippetList: React.FC = () => {
     selectedFolderId,
     selectedProjectId,
     folders,
-    projectItems
+    projectItems,
+    getDescendantFolders,
+    getDescendantProjects
   } = useStore()
 
   const { isOpen, position, targetSnippet, openContextMenu, closeContextMenu } = useContextMenu()
@@ -49,12 +51,32 @@ const SnippetList: React.FC = () => {
     
     // Aplicar filtro por folder/projeto
     if (selectedFolderId) {
-      baseSnippets = baseSnippets.filter(snippet => snippet.folderId === selectedFolderId)
+      // Include snippets from the selected folder and all its descendant folders
+      const descendantFolders = getDescendantFolders(selectedFolderId)
+      const allFolderIds = [selectedFolderId, ...descendantFolders.map(f => f.id)]
+      baseSnippets = baseSnippets.filter(snippet => 
+        allFolderIds.includes(snippet.folderId || '')
+      )
     } else if (selectedProjectId) {
-      baseSnippets = baseSnippets.filter(snippet => snippet.projectId === selectedProjectId)
+      // Include snippets from the selected project, its descendant projects, and child folders
+      const descendantProjects = getDescendantProjects(selectedProjectId)
+      const allProjectIds = [selectedProjectId, ...descendantProjects.map(p => p.id)]
+      
+      // Also get folders that are children of this project hierarchy
+      const foldersInProjectHierarchy = folders.filter(folder => 
+        allProjectIds.includes(folder.parentId || '')
+      )
+      
+      baseSnippets = baseSnippets.filter(snippet => 
+        allProjectIds.includes(snippet.projectId || '') ||
+        foldersInProjectHierarchy.some(f => f.id === snippet.folderId)
+      )
     } else if (selectedItem === 'favorites') {
       // Filtro de favoritos
       baseSnippets = baseSnippets.filter(snippet => snippet.favorite)
+    } else if (selectedItem === 'all-snippets') {
+      // Mostrar todos os snippets - não filtrar nada
+      // baseSnippets já contém todos os snippets
     } else if (selectedItem === 'unassigned') {
       // Filtro de sem marcação (sem pasta e sem projeto)
       baseSnippets = baseSnippets.filter(snippet => 

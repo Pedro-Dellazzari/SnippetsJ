@@ -3,7 +3,6 @@ import { useSidebarState } from '../hooks/useSidebarState'
 import { useDynamicSidebar } from '../hooks/useDynamicSidebar'
 import { useStore } from '../store/useStore'
 import SidebarSection from './SidebarSection'
-import FolderProjectModal from './FolderProjectModal'
 import DeleteConfirmationModal from './DeleteConfirmationModal'
 
 const Sidebar: React.FC = () => {
@@ -21,15 +20,6 @@ const Sidebar: React.FC = () => {
   const folders = useStore(state => state.folders)
   const projectItems = useStore(state => state.projectItems)
   
-  const [modalState, setModalState] = useState<{
-    isOpen: boolean
-    type: 'folder' | 'project' | null
-    editItem?: any
-    parentId?: string
-  }>({
-    isOpen: false,
-    type: null
-  })
 
   const [deleteModalState, setDeleteModalState] = useState<{
     isOpen: boolean
@@ -46,23 +36,23 @@ const Sidebar: React.FC = () => {
   })
 
   useEffect(() => {
-    const handleOpenFolderModal = (event?: CustomEvent) => {
-      const parentId = event?.detail?.parentId
-      setModalState({ isOpen: true, type: 'folder', parentId })
-    }
-
-    const handleOpenProjectModal = (event?: CustomEvent) => {
-      const parentId = event?.detail?.parentId
-      setModalState({ isOpen: true, type: 'project', parentId })
-    }
 
     const handleDeleteFolder = (event: CustomEvent) => {
       const { folderId } = event.detail
       const folder = folders.find(f => f.id === folderId)
-      const counts = getSnippetCounts()
-      const snippetCount = counts.folderCounts[folderId] || 0
       
-      if (folder && snippetCount > 0) {
+      if (!folder) return
+      
+      // Calculate total snippets in this folder and all descendant folders
+      const store = useStore.getState()
+      const descendantFolders = store.getDescendantFolders(folderId)
+      const allFolderIds = [folderId, ...descendantFolders.map(f => f.id)]
+      
+      const snippetCount = store.snippets.filter(snippet => 
+        allFolderIds.includes(snippet.folderId || '')
+      ).length
+      
+      if (snippetCount > 0) {
         setDeleteModalState({
           isOpen: true,
           type: 'folder',
@@ -70,16 +60,34 @@ const Sidebar: React.FC = () => {
           itemName: folder.name,
           snippetCount
         })
+      } else {
+        // No snippets, delete immediately
+        store.deleteFolder(folderId)
       }
     }
 
     const handleDeleteProject = (event: CustomEvent) => {
       const { projectId } = event.detail
       const project = projectItems.find(p => p.id === projectId)
-      const counts = getSnippetCounts()
-      const snippetCount = counts.projectItemCounts[projectId] || 0
       
-      if (project && snippetCount > 0) {
+      if (!project) return
+      
+      // Calculate total snippets in this project and all descendant projects/folders
+      const store = useStore.getState()
+      const descendantProjects = store.getDescendantProjects(projectId)
+      const allProjectIds = [projectId, ...descendantProjects.map(p => p.id)]
+      
+      // Also get folders that are children of this project hierarchy
+      const foldersInProjectHierarchy = store.folders.filter(folder => 
+        allProjectIds.includes(folder.parentId || '')
+      )
+      
+      const snippetCount = store.snippets.filter(snippet => 
+        allProjectIds.includes(snippet.projectId || '') ||
+        foldersInProjectHierarchy.some(f => f.id === snippet.folderId)
+      ).length
+      
+      if (snippetCount > 0) {
         setDeleteModalState({
           isOpen: true,
           type: 'project',
@@ -87,25 +95,21 @@ const Sidebar: React.FC = () => {
           itemName: project.name,
           snippetCount
         })
+      } else {
+        // No snippets, delete immediately
+        store.deleteProjectItem(projectId)
       }
     }
 
-    window.addEventListener('openFolderModal', handleOpenFolderModal as EventListener)
-    window.addEventListener('openProjectModal', handleOpenProjectModal as EventListener)
     window.addEventListener('deleteFolderWithSnippets', handleDeleteFolder as EventListener)
     window.addEventListener('deleteProjectWithSnippets', handleDeleteProject as EventListener)
 
     return () => {
-      window.removeEventListener('openFolderModal', handleOpenFolderModal as EventListener)
-      window.removeEventListener('openProjectModal', handleOpenProjectModal as EventListener)
       window.removeEventListener('deleteFolderWithSnippets', handleDeleteFolder as EventListener)
       window.removeEventListener('deleteProjectWithSnippets', handleDeleteProject as EventListener)
     }
   }, [folders, projectItems, getSnippetCounts])
 
-  const closeModal = () => {
-    setModalState({ isOpen: false, type: null, parentId: undefined })
-  }
 
   const closeDeleteModal = () => {
     setDeleteModalState({
@@ -144,15 +148,6 @@ const Sidebar: React.FC = () => {
           <span>{getSnippetCounts().totalSnippets} snippets</span>
         </div>
       </div>
-
-      {/* Folder/Project Modal */}
-      <FolderProjectModal
-        isOpen={modalState.isOpen}
-        onClose={closeModal}
-        type={modalState.type || 'folder'}
-        editItem={modalState.editItem}
-        parentId={modalState.parentId}
-      />
 
       {/* Delete Confirmation Modal */}
       <DeleteConfirmationModal

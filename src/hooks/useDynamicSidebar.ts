@@ -1,10 +1,11 @@
 import { useMemo } from 'react'
 import { useStore } from '../store/useStore'
+import { useInlineCreation } from './useInlineCreation'
 import { SidebarSection, SidebarItem } from '../types/sidebar'
 import { Folder, ProjectItem } from '../types'
 
 // Helper function to build hierarchical folder structure
-function buildFolderHierarchy(folders: Folder[], counts: any): SidebarItem[] {
+function buildFolderHierarchy(folders: Folder[], counts: any, creatingInParent?: string): SidebarItem[] {
   const folderMap = new Map<string, SidebarItem>()
   
   // Create sidebar items for all folders
@@ -35,12 +36,35 @@ function buildFolderHierarchy(folders: Folder[], counts: any): SidebarItem[] {
       rootItems.push(item)
     }
   })
+
+  // Add inline creation item if needed
+  if (creatingInParent === 'root') {
+    rootItems.push({
+      id: 'creating-folder',
+      label: '',
+      icon: 'folder',
+      type: 'folder' as const,
+      isCreating: true
+    })
+  } else if (creatingInParent) {
+    const parent = folderMap.get(creatingInParent)
+    if (parent) {
+      parent.children = parent.children || []
+      parent.children.push({
+        id: 'creating-folder',
+        label: '',
+        icon: 'folder',
+        type: 'folder' as const,
+        isCreating: true
+      })
+    }
+  }
   
   return rootItems
 }
 
 // Helper function to build hierarchical project structure  
-function buildProjectHierarchy(projects: ProjectItem[], counts: any): SidebarItem[] {
+function buildProjectHierarchy(projects: ProjectItem[], folders: Folder[], counts: any, creatingInParent?: string): SidebarItem[] {
   const projectMap = new Map<string, SidebarItem>()
   
   // Create sidebar items for all projects
@@ -54,6 +78,23 @@ function buildProjectHierarchy(projects: ProjectItem[], counts: any): SidebarIte
       children: []
     })
   })
+
+  // Add folders that belong to projects
+  folders.filter(folder => folder.parentId && projects.some(p => p.id === folder.parentId))
+    .forEach(folder => {
+      const parentProject = projectMap.get(folder.parentId!)
+      if (parentProject) {
+        parentProject.children = parentProject.children || []
+        parentProject.children.push({
+          id: `folder-${folder.id}`,
+          label: folder.name,
+          icon: 'folder',
+          count: counts.folderCounts[folder.id] || 0,
+          type: 'folder' as const,
+          children: []
+        })
+      }
+    })
   
   // Build hierarchy
   const rootItems: SidebarItem[] = []
@@ -71,6 +112,17 @@ function buildProjectHierarchy(projects: ProjectItem[], counts: any): SidebarIte
       rootItems.push(item)
     }
   })
+
+  // Add inline creation item if needed
+  if (creatingInParent === 'root') {
+    rootItems.push({
+      id: 'creating-project',
+      label: '',
+      icon: 'rocket-launch',
+      type: 'folder' as const,
+      isCreating: true
+    })
+  }
   
   return rootItems
 }
@@ -80,6 +132,8 @@ export function useDynamicSidebar(): SidebarSection[] {
   const folders = useStore(state => state.folders)
   const projectItems = useStore(state => state.projectItems)
   const getSnippetCounts = useStore(state => state.getSnippetCounts)
+  const creatingFolder = useInlineCreation(state => state.creatingFolder)
+  const creatingProject = useInlineCreation(state => state.creatingProject)
 
   return useMemo(() => {
     const counts = getSnippetCounts()
@@ -140,7 +194,7 @@ export function useDynamicSidebar(): SidebarSection[] {
             isSpecial: true
           },
           // Lista hierárquica de folders
-          ...buildFolderHierarchy(folders, counts)
+          ...buildFolderHierarchy(folders, counts, creatingFolder || undefined)
         ]
       },
       {
@@ -170,13 +224,13 @@ export function useDynamicSidebar(): SidebarSection[] {
             isSpecial: true
           },
           // Lista hierárquica de projetos
-          ...buildProjectHierarchy(projectItems, counts)
+          ...buildProjectHierarchy(projectItems, folders, counts, creatingProject || undefined)
         ]
       }
     ]
     
     return sidebarStructure
-  }, [snippets, folders, projectItems, getSnippetCounts])
+  }, [snippets, folders, projectItems, getSnippetCounts, creatingFolder, creatingProject])
 }
 
 // Função auxiliar para obter ícone específico por linguagem

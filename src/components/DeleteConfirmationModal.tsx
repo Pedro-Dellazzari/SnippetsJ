@@ -18,7 +18,16 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
   itemName,
   snippetCount
 }) => {
-  const { forceDeleteFolder, forceDeleteProjectItem, updateSnippet, snippets } = useStore()
+  const { 
+    forceDeleteFolder, 
+    forceDeleteProjectItem, 
+    updateSnippet, 
+    snippets, 
+    getDescendantFolders,
+    getDescendantProjects,
+    folders,
+    projectItems
+  } = useStore()
 
   if (!isOpen) return null
 
@@ -32,15 +41,40 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
   }
 
   const handleKeepSnippets = () => {
-    const affectedSnippets = snippets.filter(snippet => 
-      type === 'folder' ? snippet.folderId === itemId : snippet.projectId === itemId
-    )
+    let affectedSnippets: any[] = []
+    
+    if (type === 'folder') {
+      // Get all descendant folders
+      const descendantFolders = getDescendantFolders(itemId)
+      const allFolderIds = [itemId, ...descendantFolders.map(f => f.id)]
+      
+      // Find all snippets in this folder hierarchy
+      affectedSnippets = snippets.filter(snippet => 
+        allFolderIds.includes(snippet.folderId || '')
+      )
+    } else {
+      // Get all descendant projects
+      const descendantProjects = getDescendantProjects(itemId)
+      const allProjectIds = [itemId, ...descendantProjects.map(p => p.id)]
+      
+      // Also get folders that are children of this project hierarchy
+      const foldersInProjectHierarchy = folders.filter(folder => 
+        allProjectIds.includes(folder.parentId || '')
+      )
+      
+      // Find all snippets in this project hierarchy (including child folders)
+      affectedSnippets = snippets.filter(snippet => 
+        allProjectIds.includes(snippet.projectId || '') ||
+        foldersInProjectHierarchy.some(f => f.id === snippet.folderId)
+      )
+    }
 
+    // Move all affected snippets to "Sem marcação"
     affectedSnippets.forEach(snippet => {
       if (type === 'folder') {
         updateSnippet(snippet.id, { folderId: undefined })
       } else {
-        updateSnippet(snippet.id, { projectId: undefined })
+        updateSnippet(snippet.id, { projectId: undefined, folderId: undefined })
       }
     })
 

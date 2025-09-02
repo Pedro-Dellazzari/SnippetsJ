@@ -7,6 +7,7 @@ export interface SidebarItem {
   children?: SidebarItem[]
   color?: string
   isSpecial?: boolean
+  isCreating?: boolean
 }
 
 export interface SidebarSection {
