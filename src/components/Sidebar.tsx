@@ -8,12 +8,15 @@ import DeleteConfirmationModal from './DeleteConfirmationModal'
 const Sidebar: React.FC = () => {
   const {
     expandedFolders,
-    selectedItem,
     toggleSection,
     toggleFolder,
-    selectItem,
     isExpanded
   } = useSidebarState()
+  
+  const { selectedItem, setSelectedItem } = useStore(state => ({ 
+    selectedItem: state.selectedItem,
+    setSelectedItem: state.setSelectedItem
+  }))
   
   const sidebarData = useDynamicSidebar()
   const getSnippetCounts = useStore(state => state.getSnippetCounts)
@@ -135,7 +138,7 @@ const Sidebar: React.FC = () => {
               selectedItem={selectedItem}
               expandedFolders={expandedFolders}
               onToggleSection={toggleSection}
-              onSelectItem={selectItem}
+              onSelectItem={setSelectedItem}
               onToggleFolder={toggleFolder}
             />
           ))}

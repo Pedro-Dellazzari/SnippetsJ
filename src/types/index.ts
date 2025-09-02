@@ -75,6 +75,7 @@ export interface AppState {
   sidebarTab: 'categories' | 'projects' | 'tags'
   selectedFolderId: string | null
   selectedProjectId: string | null
+  selectedItem: string | null
   isLoading: boolean
   error: string | null
 }

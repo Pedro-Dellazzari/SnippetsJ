@@ -10,7 +10,6 @@ import Tooltip from './Tooltip'
 import ContextMenu, { ContextMenuFolder, ContextMenuProject } from './ContextMenu'
 import { useContextMenu } from '../hooks/useContextMenu'
 import { useFocusMode } from '../contexts/FocusModeContext'
-import { useSidebarState } from '../hooks/useSidebarState'
 import NewSnippetModal from './NewSnippetModal'
 import EmptyState from './EmptyState'
 
@@ -29,6 +28,7 @@ const SnippetList: React.FC = () => {
     deleteSnippet,
     selectedFolderId,
     selectedProjectId,
+    selectedItem,
     folders,
     projectItems,
     getDescendantFolders,
@@ -37,7 +37,6 @@ const SnippetList: React.FC = () => {
 
   const { isOpen, position, targetSnippet, openContextMenu, closeContextMenu } = useContextMenu()
   const { toggleFocusMode } = useFocusMode()
-  const { selectedItem } = useSidebarState()
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showNewModal, setShowNewModal] = useState(false)
@@ -49,45 +48,30 @@ const SnippetList: React.FC = () => {
   const sortedSnippets = useMemo(() => {
     let baseSnippets = searchQuery ? searchResults.map(r => r.snippet) : snippets
     
-    // Aplicar filtro por folder/projeto
-    if (selectedFolderId) {
-      // Include snippets from the selected folder and all its descendant folders
-      const descendantFolders = getDescendantFolders(selectedFolderId)
-      const allFolderIds = [selectedFolderId, ...descendantFolders.map(f => f.id)]
-      baseSnippets = baseSnippets.filter(snippet => 
-        allFolderIds.includes(snippet.folderId || '')
-      )
-    } else if (selectedProjectId) {
-      // Include snippets from the selected project, its descendant projects, and child folders
-      const descendantProjects = getDescendantProjects(selectedProjectId)
-      const allProjectIds = [selectedProjectId, ...descendantProjects.map(p => p.id)]
-      
-      // Also get folders that are children of this project hierarchy
-      const foldersInProjectHierarchy = folders.filter(folder => 
-        allProjectIds.includes(folder.parentId || '')
-      )
-      
-      baseSnippets = baseSnippets.filter(snippet => 
-        allProjectIds.includes(snippet.projectId || '') ||
-        foldersInProjectHierarchy.some(f => f.id === snippet.folderId)
-      )
+    // Apply filters based on selectedItem first (special sections take priority)
+    if (selectedItem === 'all-snippets') {
+      // Show all snippets - no filtering needed
+      // baseSnippets already contains all snippets
     } else if (selectedItem === 'favorites') {
-      // Filtro de favoritos
+      // Filter favorites
       baseSnippets = baseSnippets.filter(snippet => snippet.favorite)
-    } else if (selectedItem === 'all-snippets') {
-      // Mostrar todos os snippets - não filtrar nada
-      // baseSnippets já contém todos os snippets
     } else if (selectedItem === 'unassigned') {
-      // Filtro de sem marcação (sem pasta e sem projeto)
+      // Filter unassigned snippets (no folder and no project)
       baseSnippets = baseSnippets.filter(snippet => 
         !snippet.folderId && !snippet.projectId
       )
     } else if (selectedItem?.startsWith('language-')) {
-      // Filtro por linguagem
+      // Filter by language
       const language = selectedItem.replace('language-', '').toLowerCase()
       baseSnippets = baseSnippets.filter(snippet => 
         snippet.language?.toLowerCase() === language
       )
+    } else if (selectedFolderId) {
+      // Filter by specific folder (only direct snippets)
+      baseSnippets = baseSnippets.filter(snippet => snippet.folderId === selectedFolderId)
+    } else if (selectedProjectId) {
+      // Filter by specific project (only direct snippets)
+      baseSnippets = baseSnippets.filter(snippet => snippet.projectId === selectedProjectId)
     }
     
     return [...baseSnippets].sort((a, b) => {

@@ -49,6 +49,7 @@ interface StoreActions {
   // Navigation
   setSelectedFolder: (folderId: string | null) => void
   setSelectedProject: (projectId: string | null) => void
+  setSelectedItem: (itemId: string | null) => void
 }
 
 const initialState: AppState = {
@@ -64,6 +65,7 @@ const initialState: AppState = {
   sidebarTab: 'categories',
   selectedFolderId: null,
   selectedProjectId: null,
+  selectedItem: 'all-snippets',
   isLoading: false,
   error: null
 }
@@ -512,6 +514,10 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
   setSelectedProject: (projectId) => set({ 
     selectedProjectId: projectId,
     selectedFolderId: null // Clear folder selection when selecting project
+  }),
+
+  setSelectedItem: (itemId) => set({ 
+    selectedItem: itemId 
   }),
 
   // Force delete methods (used by confirmation modal)

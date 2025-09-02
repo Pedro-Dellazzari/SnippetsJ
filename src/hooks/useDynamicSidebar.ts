@@ -66,6 +66,7 @@ function buildFolderHierarchy(folders: Folder[], counts: any, creatingInParent?:
 // Helper function to build hierarchical project structure  
 function buildProjectHierarchy(projects: ProjectItem[], folders: Folder[], counts: any, creatingInParent?: string): SidebarItem[] {
   const projectMap = new Map<string, SidebarItem>()
+  const folderMap = new Map<string, SidebarItem>()
   
   // Create sidebar items for all projects
   projects.forEach(project => {
@@ -79,24 +80,53 @@ function buildProjectHierarchy(projects: ProjectItem[], folders: Folder[], count
     })
   })
 
-  // Add folders that belong to projects
+  // Create sidebar items for folders that belong to projects
   folders.filter(folder => folder.parentId && projects.some(p => p.id === folder.parentId))
     .forEach(folder => {
+      folderMap.set(folder.id, {
+        id: `folder-${folder.id}`,
+        label: folder.name,
+        icon: 'folder',
+        count: counts.folderCounts[folder.id] || 0,
+        type: 'folder' as const,
+        children: []
+      })
+    })
+
+  // Build folder hierarchy within projects (support nested folders)
+  folders.filter(folder => folder.parentId && projects.some(p => p.id === folder.parentId))
+    .forEach(folder => {
+      const folderItem = folderMap.get(folder.id)!
+      
+      // Check if parent is a project or another folder
       const parentProject = projectMap.get(folder.parentId!)
       if (parentProject) {
         parentProject.children = parentProject.children || []
-        parentProject.children.push({
-          id: `folder-${folder.id}`,
-          label: folder.name,
-          icon: 'folder',
-          count: counts.folderCounts[folder.id] || 0,
-          type: 'folder' as const,
-          children: []
-        })
+        parentProject.children.push(folderItem)
+      }
+    })
+
+  // Handle nested folders (folders within folders within projects)
+  folders.filter(folder => folder.parentId && folderMap.has(folder.parentId))
+    .forEach(folder => {
+      const folderItem = {
+        id: `folder-${folder.id}`,
+        label: folder.name,
+        icon: 'folder',
+        count: counts.folderCounts[folder.id] || 0,
+        type: 'folder' as const,
+        children: []
+      }
+      
+      const parentFolder = folderMap.get(folder.parentId!)
+      if (parentFolder) {
+        parentFolder.children = parentFolder.children || []
+        parentFolder.children.push(folderItem)
+        folderMap.set(folder.id, folderItem) // Add to map for further nesting
       }
     })
   
-  // Build hierarchy
+  // Build project hierarchy
   const rootItems: SidebarItem[] = []
   
   projects.forEach(project => {
@@ -113,7 +143,7 @@ function buildProjectHierarchy(projects: ProjectItem[], folders: Folder[], count
     }
   })
 
-  // Add inline creation item if needed
+  // Add inline creation items if needed
   if (creatingInParent === 'root') {
     rootItems.push({
       id: 'creating-project',
@@ -122,6 +152,32 @@ function buildProjectHierarchy(projects: ProjectItem[], folders: Folder[], count
       type: 'folder' as const,
       isCreating: true
     })
+  } else if (creatingInParent && projects.some(p => p.id === creatingInParent)) {
+    // Creating folder within a project
+    const parentProject = projectMap.get(creatingInParent)
+    if (parentProject) {
+      parentProject.children = parentProject.children || []
+      parentProject.children.push({
+        id: 'creating-folder',
+        label: '',
+        icon: 'folder',
+        type: 'folder' as const,
+        isCreating: true
+      })
+    }
+  } else if (creatingInParent && folderMap.has(creatingInParent)) {
+    // Creating subfolder within a folder that's inside a project
+    const parentFolder = folderMap.get(creatingInParent)
+    if (parentFolder) {
+      parentFolder.children = parentFolder.children || []
+      parentFolder.children.push({
+        id: 'creating-folder',
+        label: '',
+        icon: 'folder',
+        type: 'folder' as const,
+        isCreating: true
+      })
+    }
   }
   
   return rootItems

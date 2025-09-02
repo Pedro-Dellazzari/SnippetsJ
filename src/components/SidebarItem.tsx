@@ -23,7 +23,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
   onSelect,
   onToggle
 }) => {
-  const { setSelectedFolder, setSelectedProject, updateFolder, updateProjectItem, addFolder, addProjectItem } = useStore()
+  const { setSelectedFolder, setSelectedProject, setSelectedItem, updateFolder, updateProjectItem, addFolder, addProjectItem } = useStore()
   const { startCreatingFolder, startCreatingProject, cancelCreation, finishCreation } = useInlineCreation()
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(item.label)
@@ -61,23 +61,17 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
       if (item.id.startsWith('folder-')) {
         const folderId = item.id.replace('folder-', '')
         setSelectedFolder(folderId)
+        setSelectedItem(item.id)
       } else if (item.id.startsWith('project-')) {
         const projectId = item.id.replace('project-', '')
         setSelectedProject(projectId)
-      } else if (item.id === 'favorites' || item.id === 'all-snippets' || item.id === 'unassigned') {
-        // Clear any filters for these special views
-        setSelectedFolder(null)
-        setSelectedProject(null)
-      } else if (item.id.startsWith('language-')) {
-        // Language filters - clear folder/project selection but keep the language filter behavior
-        // This will be handled by the parent component's filtering logic based on selectedItem
-        setSelectedFolder(null)
-        setSelectedProject(null)
+        setSelectedItem(item.id)
       } else {
+        // Clear any folder/project filters for special views
         setSelectedFolder(null)
         setSelectedProject(null)
+        setSelectedItem(item.id)
       }
-      onSelect(item.id)
     }
   }
 
