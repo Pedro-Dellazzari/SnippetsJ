@@ -10,9 +10,16 @@ import {
   FireIcon,
   HashtagIcon,
   ChevronRightIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  MinusCircleIcon,
+  StarIcon,
+  HeartIcon,
+  RocketLaunchIcon,
+  PlusIcon,
+  CircleStackIcon,
+  CommandLineIcon,
+  QuestionMarkCircleIcon
 } from '@heroicons/react/24/outline'
-import clsx from 'clsx'
 
 interface SidebarIconProps {
   name: string
@@ -47,6 +54,24 @@ const SidebarIcon: React.FC<SidebarIconProps> = ({ name, className = "h-4 w-4", 
         return <ChevronDownIcon className={className} />
       case 'chevron':
         return isExpanded ? <ChevronDownIcon className={className} /> : <ChevronRightIcon className={className} />
+      case 'minus-circle':
+        return <MinusCircleIcon className={className} />
+      case 'star':
+        return <StarIcon className={className} />
+      case 'heart':
+        return <HeartIcon className={className} />
+      case 'rocket-launch':
+        return <RocketLaunchIcon className={className} />
+      case 'plus':
+        return <PlusIcon className={className} />
+      case 'circle-stack':
+        return <CircleStackIcon className={className} />
+      case 'terminal':
+        return <CommandLineIcon className={className} />
+      case 'paint-brush':
+        return <TagIcon className={className} /> // Usando TagIcon como fallback
+      case 'question-mark-circle':
+        return <QuestionMarkCircleIcon className={className} />
       default:
         return <DocumentTextIcon className={className} />
     }

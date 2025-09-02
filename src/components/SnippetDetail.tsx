@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useStore } from '../store/useStore'
+import { useFocusMode } from '../contexts/FocusModeContext'
 import { 
   ClipboardDocumentIcon,
   HeartIcon,
@@ -24,6 +25,8 @@ const SnippetDetail: React.FC = () => {
     updateSnippet,
     deleteSnippet
   } = useStore()
+  
+  const { isFocusMode, toggleFocusMode } = useFocusMode()
   
   const [copied, setCopied] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -217,6 +220,20 @@ const SnippetDetail: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-3 ml-6">
+            {/* Focus Mode Exit Button */}
+            {isFocusMode && (
+              <Tooltip content="Sair do Modo Foco">
+                <button
+                  onClick={toggleFocusMode}
+                  className="p-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+                  </svg>
+                </button>
+              </Tooltip>
+            )}
+            
             {isEditing ? (
               <>
                 <button

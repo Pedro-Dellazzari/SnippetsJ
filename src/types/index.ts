@@ -6,7 +6,8 @@ export interface Snippet {
   language: string
   tags: string[]
   category: string
-  project?: string
+  folderId?: string
+  projectId?: string
   favorite: boolean
   createdAt: string
   updatedAt: string
@@ -35,6 +36,21 @@ export interface Tag {
   snippetCount: number
 }
 
+export interface Folder {
+  id: string
+  name: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ProjectItem {
+  id: string
+  name: string
+  description?: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface SearchResult {
   snippet: Snippet
   score: number
@@ -49,10 +65,14 @@ export interface AppState {
   categories: Category[]
   projects: Project[]
   tags: Tag[]
+  folders: Folder[]
+  projectItems: ProjectItem[]
   selectedSnippet: Snippet | null
   searchQuery: string
   searchResults: SearchResult[]
   sidebarTab: 'categories' | 'projects' | 'tags'
+  selectedFolderId: string | null
+  selectedProjectId: string | null
   isLoading: boolean
   error: string | null
 }

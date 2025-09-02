@@ -8,9 +8,9 @@ interface SidebarState {
 
 export function useSidebarState() {
   const [state, setState] = useState<SidebarState>({
-    expandedSections: new Set(['favorites', 'folders', 'smart-groups']),
+    expandedSections: new Set(['global-view', 'folders', 'languages', 'projects']),
     expandedFolders: new Set(),
-    selectedItem: null
+    selectedItem: 'all-snippets'
   })
 
   const toggleSection = useCallback((sectionId: string) => {

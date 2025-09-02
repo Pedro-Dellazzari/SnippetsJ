@@ -1,10 +1,12 @@
-import { Snippet, Category, Project, Tag } from '../types'
+import { Snippet, Category, Project, Tag, Folder, ProjectItem } from '../types'
 
 const STORAGE_KEYS = {
   SNIPPETS: 'snippets-app-snippets',
   CATEGORIES: 'snippets-app-categories',
   PROJECTS: 'snippets-app-projects',
   TAGS: 'snippets-app-tags',
+  FOLDERS: 'snippets-app-folders',
+  PROJECT_ITEMS: 'snippets-app-project-items',
   SETTINGS: 'snippets-app-settings'
 }
 
@@ -13,6 +15,8 @@ export interface StorageData {
   categories: Category[]
   projects: Project[]
   tags: Tag[]
+  folders: Folder[]
+  projectItems: ProjectItem[]
 }
 
 class Storage {
@@ -89,13 +93,33 @@ class Storage {
     return this.loadFromStorage<Tag[]>(STORAGE_KEYS.TAGS, [])
   }
 
+  // Folders
+  saveFolders(folders: Folder[]): boolean {
+    return this.saveToStorage(STORAGE_KEYS.FOLDERS, folders)
+  }
+
+  loadFolders(): Folder[] {
+    return this.loadFromStorage<Folder[]>(STORAGE_KEYS.FOLDERS, [])
+  }
+
+  // Project Items
+  saveProjectItems(projectItems: ProjectItem[]): boolean {
+    return this.saveToStorage(STORAGE_KEYS.PROJECT_ITEMS, projectItems)
+  }
+
+  loadProjectItems(): ProjectItem[] {
+    return this.loadFromStorage<ProjectItem[]>(STORAGE_KEYS.PROJECT_ITEMS, [])
+  }
+
   // Load all data
   loadAllData(): StorageData {
     return {
       snippets: this.loadSnippets(),
       categories: this.loadCategories(),
       projects: this.loadProjects(),
-      tags: this.loadTags()
+      tags: this.loadTags(),
+      folders: this.loadFolders(),
+      projectItems: this.loadProjectItems()
     }
   }
 
@@ -105,7 +129,9 @@ class Storage {
       this.saveSnippets(data.snippets),
       this.saveCategories(data.categories),
       this.saveProjects(data.projects),
-      this.saveTags(data.tags)
+      this.saveTags(data.tags),
+      this.saveFolders(data.folders),
+      this.saveProjectItems(data.projectItems)
     ]
     
     return results.every(result => result)

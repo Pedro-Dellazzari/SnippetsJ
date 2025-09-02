@@ -3,9 +3,6 @@ import { createPortal } from 'react-dom'
 import clsx from 'clsx'
 import {
   FolderIcon,
-  PencilIcon,
-  DocumentDuplicateIcon,
-  TrashIcon,
   ChevronRightIcon,
   CheckIcon
 } from '@heroicons/react/24/outline'
@@ -24,27 +21,19 @@ export interface ContextMenuFolder {
 export interface ContextMenuProps {
   isOpen: boolean
   position: ContextMenuPosition
-  snippet: any
   folders: ContextMenuFolder[]
   currentFolder?: string
   onClose: () => void
   onMoveToFolder: (folderId: string) => void
-  onEdit: () => void
-  onDuplicate: () => void
-  onDelete: () => void
 }
 
 const ContextMenu: React.FC<ContextMenuProps> = ({
   isOpen,
   position,
-  snippet,
   folders,
   currentFolder,
   onClose,
-  onMoveToFolder,
-  onEdit,
-  onDuplicate,
-  onDelete
+  onMoveToFolder
 }) => {
   const [showSubmenu, setShowSubmenu] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(-1)
@@ -52,10 +41,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   const submenuRef = useRef<HTMLDivElement>(null)
 
   const menuItems = [
-    { id: 'move', label: 'Mover para pasta...', icon: FolderIcon, hasSubmenu: true },
-    { id: 'edit', label: 'Editar snippet', icon: PencilIcon },
-    { id: 'duplicate', label: 'Duplicar snippet', icon: DocumentDuplicateIcon },
-    { id: 'delete', label: 'Deletar snippet', icon: TrashIcon, danger: true }
+    { id: 'move', label: 'Mover para pasta...', icon: FolderIcon, hasSubmenu: true }
   ]
 
   useEffect(() => {
@@ -116,18 +102,9 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   }, [isOpen, focusedIndex, showSubmenu])
 
   const handleItemClick = (itemId: string) => {
-    switch (itemId) {
-      case 'edit':
-        onEdit()
-        break
-      case 'duplicate':
-        onDuplicate()
-        break
-      case 'delete':
-        onDelete()
-        break
+    if (itemId === 'move') {
+      setShowSubmenu(!showSubmenu)
     }
-    onClose()
   }
 
   const handleFolderSelect = (folderId: string) => {
@@ -141,7 +118,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
     const viewportWidth = window.innerWidth
     const viewportHeight = window.innerHeight
     const menuWidth = 220
-    const menuHeight = 160
+    const menuHeight = 60
 
     let x = position.x
     let y = position.y
@@ -207,9 +184,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
                 'w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors',
                 'hover:bg-gray-50 dark:hover:bg-gray-700',
                 focusedIndex === index && 'bg-gray-50 dark:bg-gray-700',
-                item.danger 
-                  ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
-                  : 'text-gray-700 dark:text-gray-300'
+                'text-gray-700 dark:text-gray-300'
               )}
               onClick={() => item.id === 'move' ? setShowSubmenu(!showSubmenu) : handleItemClick(item.id)}
               onMouseEnter={() => {

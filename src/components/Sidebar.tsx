@@ -1,8 +1,10 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useSidebarState } from '../hooks/useSidebarState'
 import { useDynamicSidebar } from '../hooks/useDynamicSidebar'
 import { useStore } from '../store/useStore'
 import SidebarSection from './SidebarSection'
+import FolderProjectModal from './FolderProjectModal'
+import DeleteConfirmationModal from './DeleteConfirmationModal'
 
 const Sidebar: React.FC = () => {
   const {
@@ -16,25 +18,104 @@ const Sidebar: React.FC = () => {
   
   const sidebarData = useDynamicSidebar()
   const getSnippetCounts = useStore(state => state.getSnippetCounts)
+  const folders = useStore(state => state.folders)
+  const projectItems = useStore(state => state.projectItems)
+  
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean
+    type: 'folder' | 'project' | null
+    editItem?: any
+  }>({
+    isOpen: false,
+    type: null
+  })
+
+  const [deleteModalState, setDeleteModalState] = useState<{
+    isOpen: boolean
+    type: 'folder' | 'project' | null
+    itemId: string
+    itemName: string
+    snippetCount: number
+  }>({
+    isOpen: false,
+    type: null,
+    itemId: '',
+    itemName: '',
+    snippetCount: 0
+  })
+
+  useEffect(() => {
+    const handleOpenFolderModal = () => {
+      setModalState({ isOpen: true, type: 'folder' })
+    }
+
+    const handleOpenProjectModal = () => {
+      setModalState({ isOpen: true, type: 'project' })
+    }
+
+    const handleDeleteFolder = (event: CustomEvent) => {
+      const { folderId } = event.detail
+      const folder = folders.find(f => f.id === folderId)
+      const counts = getSnippetCounts()
+      const snippetCount = counts.folderCounts[folderId] || 0
+      
+      if (folder && snippetCount > 0) {
+        setDeleteModalState({
+          isOpen: true,
+          type: 'folder',
+          itemId: folderId,
+          itemName: folder.name,
+          snippetCount
+        })
+      }
+    }
+
+    const handleDeleteProject = (event: CustomEvent) => {
+      const { projectId } = event.detail
+      const project = projectItems.find(p => p.id === projectId)
+      const counts = getSnippetCounts()
+      const snippetCount = counts.projectItemCounts[projectId] || 0
+      
+      if (project && snippetCount > 0) {
+        setDeleteModalState({
+          isOpen: true,
+          type: 'project',
+          itemId: projectId,
+          itemName: project.name,
+          snippetCount
+        })
+      }
+    }
+
+    window.addEventListener('openFolderModal', handleOpenFolderModal)
+    window.addEventListener('openProjectModal', handleOpenProjectModal)
+    window.addEventListener('deleteFolderWithSnippets', handleDeleteFolder as EventListener)
+    window.addEventListener('deleteProjectWithSnippets', handleDeleteProject as EventListener)
+
+    return () => {
+      window.removeEventListener('openFolderModal', handleOpenFolderModal)
+      window.removeEventListener('openProjectModal', handleOpenProjectModal)
+      window.removeEventListener('deleteFolderWithSnippets', handleDeleteFolder as EventListener)
+      window.removeEventListener('deleteProjectWithSnippets', handleDeleteProject as EventListener)
+    }
+  }, [folders, projectItems, getSnippetCounts])
+
+  const closeModal = () => {
+    setModalState({ isOpen: false, type: null })
+  }
+
+  const closeDeleteModal = () => {
+    setDeleteModalState({
+      isOpen: false,
+      type: null,
+      itemId: '',
+      itemName: '',
+      snippetCount: 0
+    })
+  }
 
   return (
     <div className="w-80 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-sm border-r border-gray-200/60 dark:border-gray-700/60 flex flex-col">
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200/60 dark:border-gray-700/60">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">📝</span>
-          </div>
-          <div>
-            <h1 className="font-bold text-gray-900 dark:text-gray-100 text-lg">
-              Snippets
-            </h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Code Library
-            </p>
-          </div>
-        </div>
-      </div>
 
       {/* Sidebar Content */}
       <div className="flex-1 overflow-y-auto px-2 py-6">
@@ -56,11 +137,28 @@ const Sidebar: React.FC = () => {
 
       {/* Footer */}
       <div className="px-6 py-3 border-t border-gray-200/60 dark:border-gray-700/60 bg-gray-50/50 dark:bg-gray-800/50">
-        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-          <span>{getSnippetCounts().totalSnippets} snippets total</span>
-          <span>{((JSON.stringify(sidebarData).length / 1024 / 1024) * 10).toFixed(1)} MB</span>
+        <div className="flex items-center justify-between text-xs font-medium text-gray-500 dark:text-gray-400">
+          <span>{getSnippetCounts().totalSnippets} snippets</span>
         </div>
       </div>
+
+      {/* Folder/Project Modal */}
+      <FolderProjectModal
+        isOpen={modalState.isOpen}
+        onClose={closeModal}
+        type={modalState.type || 'folder'}
+        editItem={modalState.editItem}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteModalState.isOpen}
+        onClose={closeDeleteModal}
+        type={deleteModalState.type || 'folder'}
+        itemId={deleteModalState.itemId}
+        itemName={deleteModalState.itemName}
+        snippetCount={deleteModalState.snippetCount}
+      />
     </div>
   )
 }

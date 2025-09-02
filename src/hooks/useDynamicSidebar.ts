@@ -4,36 +4,55 @@ import { SidebarSection } from '../types/sidebar'
 
 export function useDynamicSidebar(): SidebarSection[] {
   const snippets = useStore(state => state.snippets)
+  const folders = useStore(state => state.folders)
+  const projectItems = useStore(state => state.projectItems)
   const getSnippetCounts = useStore(state => state.getSnippetCounts)
 
   return useMemo(() => {
     const counts = getSnippetCounts()
     
-    // Obter linguagens únicas dos snippets (baseado no campo category que representa a linguagem)
+    // Obter linguagens únicas dos snippets (baseado no campo language)
     const uniqueLanguages = Array.from(new Set(
       snippets
-        .map(s => s.category)
-        .filter(category => category && category.trim() !== '')
+        .map(s => s.language)
+        .filter(language => language && language.trim() !== '')
     )).sort((a, b) => {
       // Ordenar por quantidade de snippets (decrescente), depois alfabeticamente
-      const countA = counts.categoryCounts[a] || 0
-      const countB = counts.categoryCounts[b] || 0
+      const countA = counts.languageCounts[a] || 0
+      const countB = counts.languageCounts[b] || 0
       if (countA !== countB) return countB - countA
       return a.localeCompare(b)
     })
 
-    // Obter projetos únicos dos snippets
-    const uniqueProjects = Array.from(new Set(
-      snippets
-        .map(s => s.project)
-        .filter(project => project && project.trim() !== '')
-    )).sort()
-
-    // Obter folders únicos (vamos usar um campo separado para folders no futuro)
-    // Por enquanto, começamos com array vazio até implementarmos folders
-    const uniqueFolders: string[] = []
-
-    return [
+    const sidebarStructure = [
+      {
+        id: 'global-view',
+        title: 'VISUALIZAÇÃO GLOBAL',
+        collapsible: false,
+        items: [
+          {
+            id: 'all-snippets',
+            label: 'Todos',
+            icon: 'document-text',
+            count: counts.totalSnippets,
+            type: 'favorite' as const
+          },
+          {
+            id: 'favorites',
+            label: 'Favoritos',
+            icon: 'heart',
+            count: counts.favorites,
+            type: 'favorite' as const
+          },
+          {
+            id: 'unassigned',
+            label: 'Sem marcação',
+            icon: 'question-mark-circle',
+            count: counts.unassigned,
+            type: 'favorite' as const
+          }
+        ]
+      },
       {
         id: 'folders',
         title: 'FOLDERS',
@@ -48,11 +67,11 @@ export function useDynamicSidebar(): SidebarSection[] {
             isSpecial: true
           },
           // Lista de folders existentes
-          ...uniqueFolders.map(folder => ({
-            id: `folder-${folder.toLowerCase()}`,
-            label: folder,
+          ...folders.map(folder => ({
+            id: `folder-${folder.id}`,
+            label: folder.name,
             icon: 'folder',
-            count: 0, // TODO: implementar contagem de folders
+            count: counts.folderCounts[folder.id] || 0,
             type: 'folder' as const
           }))
         ]
@@ -65,7 +84,7 @@ export function useDynamicSidebar(): SidebarSection[] {
           id: `language-${language.toLowerCase()}`,
           label: language,
           icon: getLanguageIcon(language),
-          count: counts.categoryCounts[language] || 0,
+          count: counts.languageCounts[language] || 0,
           type: 'folder' as const,
           color: getLanguageColor(language)
         }))
@@ -84,17 +103,19 @@ export function useDynamicSidebar(): SidebarSection[] {
             isSpecial: true
           },
           // Lista de projetos existentes
-          ...uniqueProjects.map(project => ({
-            id: `project-${project!.toLowerCase()}`,
-            label: project!,
+          ...projectItems.map(project => ({
+            id: `project-${project.id}`,
+            label: project.name,
             icon: 'rocket-launch',
-            count: counts.projectCounts[project!] || 0,
+            count: counts.projectItemCounts[project.id] || 0,
             type: 'folder' as const
           }))
         ]
       }
     ]
-  }, [snippets, getSnippetCounts])
+    
+    return sidebarStructure
+  }, [snippets, folders, projectItems, getSnippetCounts])
 }
 
 // Função auxiliar para obter ícone específico por linguagem

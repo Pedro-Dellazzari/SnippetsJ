@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { SidebarItem as SidebarItemType } from '../types/sidebar'
+import { useStore } from '../store/useStore'
 import SidebarIcon from './SidebarIcon'
 import clsx from 'clsx'
 
@@ -20,18 +21,24 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
   onSelect,
   onToggle
 }) => {
+  const { setSelectedFolder, setSelectedProject, updateFolder, updateProjectItem } = useStore()
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState(item.label)
+  const inputRef = useRef<HTMLInputElement>(null)
+  
   const hasChildren = item.children && item.children.length > 0
   const paddingLeft = 16 + (level * 20)
+  const canEdit = (item.id.startsWith('folder-') || item.id.startsWith('project-')) && !item.isSpecial
 
   const handleClick = () => {
     if (item.isSpecial) {
       // Lidar com botões especiais como "+ Nova pasta" e "+ Novo Projeto"
       if (item.id === 'add-folder') {
-        // TODO: Abrir modal para criar nova pasta
-        console.log('Criar nova pasta')
+        // Dispatch custom event to open folder modal
+        window.dispatchEvent(new CustomEvent('openFolderModal', { detail: { type: 'folder' } }))
       } else if (item.id === 'add-project') {
-        // TODO: Abrir modal para criar novo projeto
-        console.log('Criar novo projeto')
+        // Dispatch custom event to open project modal
+        window.dispatchEvent(new CustomEvent('openProjectModal', { detail: { type: 'project' } }))
       }
       return
     }
@@ -39,6 +46,26 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
     if (hasChildren) {
       onToggle(item.id)
     } else {
+      // Handle navigation to folders/projects
+      if (item.id.startsWith('folder-')) {
+        const folderId = item.id.replace('folder-', '')
+        setSelectedFolder(folderId)
+      } else if (item.id.startsWith('project-')) {
+        const projectId = item.id.replace('project-', '')
+        setSelectedProject(projectId)
+      } else if (item.id === 'favorites' || item.id === 'all-snippets' || item.id === 'unassigned') {
+        // Clear any filters for these special views
+        setSelectedFolder(null)
+        setSelectedProject(null)
+      } else if (item.id.startsWith('language-')) {
+        // Language filters - clear folder/project selection but keep the language filter behavior
+        // This will be handled by the parent component's filtering logic based on selectedItem
+        setSelectedFolder(null)
+        setSelectedProject(null)
+      } else {
+        setSelectedFolder(null)
+        setSelectedProject(null)
+      }
       onSelect(item.id)
     }
   }
@@ -47,6 +74,51 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
     e.stopPropagation()
     onToggle(item.id)
   }
+
+  const handleDoubleClick = () => {
+    if (canEdit && !isEditing) {
+      setIsEditing(true)
+      setEditValue(item.label)
+    }
+  }
+
+  const handleEditSubmit = () => {
+    const trimmedValue = editValue.trim()
+    if (trimmedValue && trimmedValue !== item.label) {
+      if (item.id.startsWith('folder-')) {
+        const folderId = item.id.replace('folder-', '')
+        updateFolder(folderId, { name: trimmedValue })
+      } else if (item.id.startsWith('project-')) {
+        const projectId = item.id.replace('project-', '')
+        updateProjectItem(projectId, { name: trimmedValue })
+      }
+    }
+    setIsEditing(false)
+  }
+
+  const handleEditCancel = () => {
+    setEditValue(item.label)
+    setIsEditing(false)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleEditSubmit()
+    } else if (e.key === 'Escape') {
+      handleEditCancel()
+    }
+  }
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [isEditing])
+
+  useEffect(() => {
+    setEditValue(item.label)
+  }, [item.label])
 
   const isSelected = selectedItem === item.id
   const isExpanded = expandedFolders.has(item.id)
@@ -104,10 +176,12 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
     <div>
       <div
         onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
         className={clsx(
           'flex items-center gap-3 py-2 pr-3 cursor-pointer transition-all duration-200 group relative rounded-md mx-1',
           getItemStyles(),
-          hasChildren && 'pr-10'
+          hasChildren && 'pr-10',
+          'hover:scale-[1.02] active:scale-[0.98]'
         )}
         style={{ 
           paddingLeft: `${paddingLeft}px`,
@@ -173,12 +247,24 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
         </div>
 
         {/* Label */}
-        <span className={clsx(
-          'flex-1 text-sm font-medium truncate',
-          isSelected && 'font-semibold'
-        )}>
-          {item.label}
-        </span>
+        {isEditing ? (
+          <input
+            ref={inputRef}
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={handleEditSubmit}
+            onKeyDown={handleKeyDown}
+            className="flex-1 text-sm font-medium bg-white dark:bg-gray-700 border border-blue-500 rounded px-1 py-0.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <span className={clsx(
+            'flex-1 text-sm font-medium truncate',
+            isSelected && 'font-semibold'
+          )}>
+            {item.label}
+          </span>
+        )}
 
         {/* Count Badge */}
         {getCountBadge()}

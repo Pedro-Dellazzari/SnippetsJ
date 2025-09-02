@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { Snippet, Category, Project, Tag, SearchResult, AppState } from '../types'
+import { Snippet, Category, Project, Tag, SearchResult, AppState, Folder, ProjectItem } from '../types'
 import Fuse from 'fuse.js'
 import { storage } from '../utils/storage'
 
@@ -24,12 +24,29 @@ interface StoreActions {
     categoryCounts: Record<string, number>
     projectCounts: Record<string, number>
     tagCounts: Record<string, number>
+    languageCounts: Record<string, number>
+    folderCounts: Record<string, number>
+    projectItemCounts: Record<string, number>
     untagged: number
     uncategorized: number
     recentlyModified: number
     favorites: number
+    unassigned: number
     mostUsed: number
   }
+  // Folders
+  addFolder: (name: string) => void
+  updateFolder: (id: string, updates: Partial<Folder>) => void
+  deleteFolder: (id: string) => void
+  forceDeleteFolder: (id: string) => void
+  // Project Items
+  addProjectItem: (name: string, description?: string) => void
+  updateProjectItem: (id: string, updates: Partial<ProjectItem>) => void
+  deleteProjectItem: (id: string) => void
+  forceDeleteProjectItem: (id: string) => void
+  // Navigation
+  setSelectedFolder: (folderId: string | null) => void
+  setSelectedProject: (projectId: string | null) => void
 }
 
 const initialState: AppState = {
@@ -37,10 +54,14 @@ const initialState: AppState = {
   categories: [],
   projects: [],
   tags: [],
+  folders: [],
+  projectItems: [],
   selectedSnippet: null,
   searchQuery: '',
   searchResults: [],
   sidebarTab: 'categories',
+  selectedFolderId: null,
+  selectedProjectId: null,
   isLoading: false,
   error: null
 }
@@ -230,6 +251,8 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
       categories: data.categories,
       projects: data.projects,
       tags: data.tags,
+      folders: data.folders,
+      projectItems: data.projectItems,
       selectedSnippet: data.snippets.length > 0 ? data.snippets[0] : null
     })
   },
@@ -240,7 +263,9 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
       snippets: [...currentData.snippets, ...exampleData.snippets],
       categories: [...currentData.categories, ...exampleData.categories],
       projects: [...currentData.projects, ...exampleData.projects],
-      tags: [...currentData.tags, ...exampleData.tags]
+      tags: [...currentData.tags, ...exampleData.tags],
+      folders: currentData.folders,
+      projectItems: currentData.projectItems
     }
     
     storage.saveAllData(newData)
@@ -248,13 +273,15 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
       snippets: newData.snippets,
       categories: newData.categories,
       projects: newData.projects,
-      tags: newData.tags
+      tags: newData.tags,
+      folders: newData.folders,
+      projectItems: newData.projectItems
     })
   },
 
   exportData: () => {
-    const { snippets, categories, projects, tags } = get()
-    return JSON.stringify({ snippets, categories, projects, tags }, null, 2)
+    const { snippets, categories, projects, tags, folders, projectItems } = get()
+    return JSON.stringify({ snippets, categories, projects, tags, folders, projectItems }, null, 2)
   },
 
   importData: (jsonData: string) => {
@@ -266,7 +293,9 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
         snippets: data.snippets || [],
         categories: data.categories || [],
         projects: data.projects || [],
-        tags: data.tags || []
+        tags: data.tags || [],
+        folders: data.folders || [],
+        projectItems: data.projectItems || []
       }
       
       storage.saveAllData(validData)
@@ -274,7 +303,9 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
         snippets: validData.snippets,
         categories: validData.categories,
         projects: validData.projects,
-        tags: validData.tags
+        tags: validData.tags,
+        folders: validData.folders,
+        projectItems: validData.projectItems
       })
       
       return true
@@ -297,11 +328,22 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
       }
     })
     
-    // Contadores de projetos
+    // Contadores de projetos (legacy - mantido por compatibilidade)
     const projectCounts: Record<string, number> = {}
+    
+    // Contadores de folders
+    const folderCounts: Record<string, number> = {}
     snippets.forEach(snippet => {
-      if (snippet.project) {
-        projectCounts[snippet.project] = (projectCounts[snippet.project] || 0) + 1
+      if (snippet.folderId) {
+        folderCounts[snippet.folderId] = (folderCounts[snippet.folderId] || 0) + 1
+      }
+    })
+    
+    // Contadores de project items
+    const projectItemCounts: Record<string, number> = {}
+    snippets.forEach(snippet => {
+      if (snippet.projectId) {
+        projectItemCounts[snippet.projectId] = (projectItemCounts[snippet.projectId] || 0) + 1
       }
     })
     
@@ -311,6 +353,14 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
       snippet.tags?.forEach(tag => {
         tagCounts[tag] = (tagCounts[tag] || 0) + 1
       })
+    })
+
+    // Contadores de linguagens (baseado no campo language)
+    const languageCounts: Record<string, number> = {}
+    snippets.forEach(snippet => {
+      if (snippet.language) {
+        languageCounts[snippet.language] = (languageCounts[snippet.language] || 0) + 1
+      }
     })
     
     // Snippets sem tags
@@ -327,6 +377,11 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
     // Favoritos
     const favorites = snippets.filter(snippet => snippet.favorite).length
     
+    // Sem marcação (sem pasta e sem projeto)
+    const unassigned = snippets.filter(snippet => 
+      !snippet.folderId && !snippet.projectId
+    ).length
+    
     // Mais usados (com mais de 0 uso)
     const mostUsed = snippets.filter(snippet => snippet.usage_count > 0).length
     
@@ -335,11 +390,168 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
       categoryCounts,
       projectCounts,
       tagCounts,
+      languageCounts,
+      folderCounts,
+      projectItemCounts,
       untagged,
       uncategorized,
       recentlyModified,
       favorites,
+      unassigned,
       mostUsed
+    }
+  },
+
+  // Folders CRUD
+  addFolder: (name) => {
+    const newFolder: Folder = {
+      id: crypto.randomUUID(),
+      name: name.trim(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+    
+    const newFolders = [...get().folders, newFolder]
+    set({ folders: newFolders })
+    storage.saveFolders(newFolders)
+  },
+
+  updateFolder: (id, updates) => {
+    const newFolders = get().folders.map(folder =>
+      folder.id === id 
+        ? { ...folder, ...updates, updatedAt: new Date().toISOString() } 
+        : folder
+    )
+    set({ folders: newFolders })
+    storage.saveFolders(newFolders)
+  },
+
+  deleteFolder: (id) => {
+    const state = get()
+    const snippetsInFolder = state.snippets.filter(snippet => snippet.folderId === id)
+    
+    // If folder contains snippets, dispatch event for confirmation modal
+    if (snippetsInFolder.length > 0) {
+      window.dispatchEvent(new CustomEvent('deleteFolderWithSnippets', { 
+        detail: { folderId: id } 
+      }))
+      return
+    }
+    
+    // Remove folder (no snippets inside)
+    const newFolders = state.folders.filter(folder => folder.id !== id)
+    set({ folders: newFolders })
+    storage.saveFolders(newFolders)
+    
+    // Clear selection if this folder was selected
+    if (state.selectedFolderId === id) {
+      set({ selectedFolderId: null })
+    }
+  },
+
+  // Project Items CRUD
+  addProjectItem: (name, description) => {
+    const newProjectItem: ProjectItem = {
+      id: crypto.randomUUID(),
+      name: name.trim(),
+      description: description?.trim(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+    
+    const newProjectItems = [...get().projectItems, newProjectItem]
+    set({ projectItems: newProjectItems })
+    storage.saveProjectItems(newProjectItems)
+  },
+
+  updateProjectItem: (id, updates) => {
+    const newProjectItems = get().projectItems.map(project =>
+      project.id === id 
+        ? { ...project, ...updates, updatedAt: new Date().toISOString() }
+        : project
+    )
+    set({ projectItems: newProjectItems })
+    storage.saveProjectItems(newProjectItems)
+  },
+
+  deleteProjectItem: (id) => {
+    const state = get()
+    const snippetsInProject = state.snippets.filter(snippet => snippet.projectId === id)
+    
+    // If project contains snippets, dispatch event for confirmation modal
+    if (snippetsInProject.length > 0) {
+      window.dispatchEvent(new CustomEvent('deleteProjectWithSnippets', { 
+        detail: { projectId: id } 
+      }))
+      return
+    }
+    
+    // Remove project (no snippets inside)
+    const newProjectItems = state.projectItems.filter(project => project.id !== id)
+    set({ projectItems: newProjectItems })
+    storage.saveProjectItems(newProjectItems)
+    
+    // Clear selection if this project was selected
+    if (state.selectedProjectId === id) {
+      set({ selectedProjectId: null })
+    }
+  },
+
+  // Navigation
+  setSelectedFolder: (folderId) => set({ 
+    selectedFolderId: folderId,
+    selectedProjectId: null // Clear project selection when selecting folder
+  }),
+
+  setSelectedProject: (projectId) => set({ 
+    selectedProjectId: projectId,
+    selectedFolderId: null // Clear folder selection when selecting project
+  }),
+
+  // Force delete methods (used by confirmation modal)
+  forceDeleteFolder: (id) => {
+    const state = get()
+    
+    // Remove folder
+    const newFolders = state.folders.filter(folder => folder.id !== id)
+    set({ folders: newFolders })
+    storage.saveFolders(newFolders)
+    
+    // Remove folderId from snippets that were in this folder
+    const newSnippets = state.snippets.map(snippet =>
+      snippet.folderId === id 
+        ? { ...snippet, folderId: undefined, updatedAt: new Date().toISOString() }
+        : snippet
+    )
+    set({ snippets: newSnippets })
+    storage.saveSnippets(newSnippets)
+    
+    // Clear selection if this folder was selected
+    if (state.selectedFolderId === id) {
+      set({ selectedFolderId: null })
+    }
+  },
+
+  forceDeleteProjectItem: (id) => {
+    const state = get()
+    
+    // Remove project
+    const newProjectItems = state.projectItems.filter(project => project.id !== id)
+    set({ projectItems: newProjectItems })
+    storage.saveProjectItems(newProjectItems)
+    
+    // Remove projectId from snippets that were in this project
+    const newSnippets = state.snippets.map(snippet =>
+      snippet.projectId === id 
+        ? { ...snippet, projectId: undefined, updatedAt: new Date().toISOString() }
+        : snippet
+    )
+    set({ snippets: newSnippets })
+    storage.saveSnippets(newSnippets)
+    
+    // Clear selection if this project was selected
+    if (state.selectedProjectId === id) {
+      set({ selectedProjectId: null })
     }
   }
 }))
