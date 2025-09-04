@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { Snippet, Category, Project, Tag, SearchResult, AppState, Folder, ProjectItem } from '../types'
+import { Snippet, Category, Project, Tag, AppState, Folder, ProjectItem } from '../types'
 import Fuse from 'fuse.js'
 import { storage } from '../utils/storage'
 
@@ -19,6 +19,8 @@ interface StoreActions {
   importExampleData: () => void
   exportData: () => string
   importData: (jsonData: string) => boolean
+  moveSnippetToFolder: (snippetId: string, folderId: string | null) => void
+  moveSnippetToProject: (snippetId: string, projectId: string | null) => void
   getSnippetCounts: () => {
     totalSnippets: number
     categoryCounts: Record<string, number>
@@ -149,11 +151,18 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
   },
   
   updateSnippet: (id, updates) => {
-    const newSnippets = get().snippets.map(snippet =>
+    const state = get()
+    const newSnippets = state.snippets.map(snippet =>
       snippet.id === id ? { ...snippet, ...updates, updatedAt: new Date().toISOString() } : snippet
     )
     set({ snippets: newSnippets })
     storage.saveSnippets(newSnippets)
+    
+    // Auto refresh current view if needed
+    const updatedSnippet = newSnippets.find(s => s.id === id)
+    if (updatedSnippet && state.selectedSnippet?.id === id) {
+      set({ selectedSnippet: updatedSnippet })
+    }
   },
   
   deleteSnippet: (id) => {
@@ -242,7 +251,10 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
     const results = fuse.search(query).map(result => ({
       snippet: result.item,
       score: result.score || 0,
-      matches: result.matches || []
+      matches: (result.matches || []).map(match => ({
+        field: match.key || '',
+        indices: Array.from(match.indices || []) as number[][]
+      }))
     }))
     
     set({ searchResults: results })
@@ -593,6 +605,88 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
     // Clear selection if this project was selected
     if (state.selectedProjectId === id) {
       set({ selectedProjectId: null })
+    }
+  },
+
+  // Snippet Movement Methods
+  moveSnippetToFolder: (snippetId, folderId) => {
+    const state = get()
+    const snippet = state.snippets.find(s => s.id === snippetId)
+    if (!snippet) return
+
+    // Clear updates
+    const updates: Partial<Snippet> = {}
+
+    if (!folderId) {
+      // Moving to "no folder" - clear both folderId and projectId
+      updates.folderId = undefined
+      updates.projectId = undefined
+    } else {
+      // Moving to a specific folder
+      const targetFolder = state.folders.find(f => f.id === folderId)
+      if (!targetFolder) return
+
+      updates.folderId = folderId
+      // If the folder belongs to a project, clear the direct projectId
+      // (the project relationship is now through the folder)
+      updates.projectId = undefined
+    }
+
+    get().updateSnippet(snippetId, updates)
+  },
+
+  moveSnippetToProject: (snippetId, projectId) => {
+    const state = get()
+    const snippet = state.snippets.find(s => s.id === snippetId)
+    if (!snippet) return
+
+    if (!projectId) {
+      // Remove from project, keep current folder if it's not a project folder
+      const currentFolder = snippet.folderId ? state.folders.find(f => f.id === snippet.folderId) : null
+      const updates: Partial<Snippet> = {
+        projectId: undefined
+      }
+      
+      // If current folder belongs to a project, also clear the folder
+      if (currentFolder && currentFolder.parentId) {
+        updates.folderId = undefined
+      }
+      
+      get().updateSnippet(snippetId, updates)
+      return
+    }
+
+    // Moving to a project - find or create a default folder within the project
+    const projectFolders = state.folders.filter(folder => folder.parentId === projectId)
+    
+    if (projectFolders.length === 0) {
+      // No folders in project - create a default one
+      const defaultFolderName = 'Snippets'
+      const newFolder: Folder = {
+        id: crypto.randomUUID(),
+        name: defaultFolderName,
+        parentId: projectId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      
+      const newFolders = [...state.folders, newFolder]
+      set({ folders: newFolders })
+      storage.saveFolders(newFolders)
+      
+      // Move snippet to the new folder
+      const updates: Partial<Snippet> = {
+        folderId: newFolder.id,
+        projectId: undefined // Clear direct project assignment since it's now through folder
+      }
+      get().updateSnippet(snippetId, updates)
+    } else {
+      // Move to the first available folder in the project
+      const updates: Partial<Snippet> = {
+        folderId: projectFolders[0].id,
+        projectId: undefined // Clear direct project assignment since it's now through folder
+      }
+      get().updateSnippet(snippetId, updates)
     }
   },
 

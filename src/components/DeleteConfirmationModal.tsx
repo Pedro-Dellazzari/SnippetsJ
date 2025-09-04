@@ -25,8 +25,7 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
     snippets, 
     getDescendantFolders,
     getDescendantProjects,
-    folders,
-    projectItems
+    folders
   } = useStore()
 
   if (!isOpen) return null

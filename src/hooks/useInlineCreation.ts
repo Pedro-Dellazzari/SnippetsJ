@@ -12,7 +12,7 @@ interface InlineCreationState {
   finishCreation: () => void
 }
 
-export const useInlineCreation = create<InlineCreationState>((set, get) => ({
+export const useInlineCreation = create<InlineCreationState>((set) => ({
   creatingFolder: null,
   creatingProject: null,
   

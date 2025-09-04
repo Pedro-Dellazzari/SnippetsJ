@@ -7,6 +7,9 @@ import {
   ChevronRightIcon,
   CheckIcon
 } from '@heroicons/react/24/outline'
+import {
+  FolderIcon as FolderSolidIcon
+} from '@heroicons/react/24/solid'
 
 export interface ContextMenuPosition {
   x: number
@@ -16,13 +19,15 @@ export interface ContextMenuPosition {
 export interface ContextMenuFolder {
   id: string
   name: string
-  level?: number
+  parentId?: string
+  children?: ContextMenuFolder[]
 }
 
 export interface ContextMenuProject {
   id: string
   name: string
-  level?: number
+  parentId?: string
+  children?: ContextMenuProject[]
 }
 
 export interface ContextMenuProps {
@@ -37,6 +42,232 @@ export interface ContextMenuProps {
   onMoveToProject: (projectId: string) => void
 }
 
+// Helper function to build hierarchical structure
+const buildHierarchy = <T extends { id: string; parentId?: string }>(items: T[]): (T & { children: T[] })[] => {
+  const itemMap = new Map<string, T & { children: T[] }>()
+  const rootItems: (T & { children: T[] })[] = []
+
+  // Create map with children arrays
+  items.forEach(item => {
+    itemMap.set(item.id, { ...item, children: [] })
+  })
+
+  // Build hierarchy
+  items.forEach(item => {
+    const itemWithChildren = itemMap.get(item.id)!
+    if (item.parentId && itemMap.has(item.parentId)) {
+      itemMap.get(item.parentId)!.children.push(itemWithChildren)
+    } else {
+      rootItems.push(itemWithChildren)
+    }
+  })
+
+  return rootItems
+}
+
+interface CascadingSubmenuProps {
+  items: (ContextMenuFolder | ContextMenuProject)[]
+  type: 'folder' | 'project'
+  currentId?: string
+  onSelect: (id: string) => void
+  position: { x: number; y: number }
+  level?: number
+}
+
+const CascadingSubmenu: React.FC<CascadingSubmenuProps> = ({
+  items,
+  type,
+  currentId,
+  onSelect,
+  position,
+  level = 0
+}) => {
+  const [hoveredItemId, setHoveredItemId] = useState<string | null>(null)
+  const [childSubmenuPosition, setChildSubmenuPosition] = useState<{ x: number; y: number } | null>(null)
+  const submenuRef = useRef<HTMLDivElement>(null)
+
+  const getIcon = (item: ContextMenuFolder | ContextMenuProject) => {
+    if (type === 'folder') {
+      return item.children && item.children.length > 0 ? FolderSolidIcon : FolderIcon
+    }
+    return RocketLaunchIcon
+  }
+
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const showTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const handleItemHover = (item: ContextMenuFolder | ContextMenuProject, event: React.MouseEvent) => {
+    console.log('🎯 Hovering over item:', { name: item.name, hasChildren: item.children?.length || 0 })
+    
+    // Clear any existing timeouts
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current)
+      hoverTimeoutRef.current = null
+    }
+    if (showTimeoutRef.current) {
+      clearTimeout(showTimeoutRef.current)
+      showTimeoutRef.current = null
+    }
+
+    if (item.children && item.children.length > 0) {
+      console.log('📂 Item has children, showing submenu')
+      setHoveredItemId(item.id)
+      const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+      const submenuWidth = 200
+      
+      let x = rect.right + 8
+      let y = rect.top
+
+      // Adjust horizontal position if submenu would go off screen
+      if (x + submenuWidth > window.innerWidth) {
+        x = rect.left - submenuWidth - 8
+      }
+
+      // Adjust vertical position if submenu would go off screen
+      const maxSubmenuHeight = 400
+      if (y + maxSubmenuHeight > window.innerHeight) {
+        y = Math.max(10, window.innerHeight - maxSubmenuHeight - 10)
+      }
+
+      setChildSubmenuPosition({ x, y })
+    } else {
+      console.log('📄 Item has no children, but keeping current submenu open')
+      // Don't hide submenu immediately - let the mouse leave handler deal with it
+      // This prevents the submenu from closing when hovering over leaf items
+      setHoveredItemId(item.id) // Still set the hovered item for visual feedback
+    }
+  }
+
+  const handleMouseLeave = () => {
+    console.log('🐭 Mouse left submenu item, setting short timeout to hide')
+    // Very short timeout - just to handle quick mouse movements
+    hoverTimeoutRef.current = setTimeout(() => {
+      console.log('⏰ Short timeout triggered, hiding child submenu')
+      setHoveredItemId(null)
+      setChildSubmenuPosition(null)
+    }, 100) // Much shorter timeout for better UX
+  }
+
+  const handleMouseEnterSubmenu = () => {
+    console.log('🐭 Mouse entered submenu area, canceling hide timeout')
+    // Cancel hiding when mouse enters submenu area
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current)
+      hoverTimeoutRef.current = null
+    }
+  }
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current)
+      }
+      if (showTimeoutRef.current) {
+        clearTimeout(showTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  return (
+    <>
+      <div
+        ref={submenuRef}
+        className="fixed z-[60] min-w-[200px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-2"
+        style={{
+          left: `${position.x}px`,
+          top: `${position.y}px`
+        }}
+        onMouseEnter={handleMouseEnterSubmenu}
+        onMouseLeave={(e) => {
+          // Only hide if mouse is actually leaving the entire submenu area
+          const relatedTarget = e.relatedTarget as Element
+          if (relatedTarget && (
+            submenuRef.current?.contains(relatedTarget) ||
+            relatedTarget.closest('[class*="z-[60]"]')
+          )) {
+            console.log('🐭 Mouse moved within submenu area, keeping open')
+            return
+          }
+          console.log('🐭 Mouse truly left submenu area')
+          handleMouseLeave()
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* "None" option only for root level */}
+        {level === 0 && (
+          <button
+            className={clsx(
+              'w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors',
+              'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'
+            )}
+            onClick={(e) => {
+              console.log('🖱️ "None" option clicked for type:', type)
+              e.stopPropagation()
+              onSelect('')
+            }}
+          >
+            <div className="h-4 w-4 flex-shrink-0" />
+            <span className="flex-1">{type === 'folder' ? 'Nenhuma pasta' : 'Nenhum projeto'}</span>
+            {!currentId && (
+              <CheckIcon className="h-4 w-4 text-blue-500" />
+            )}
+          </button>
+        )}
+
+        {items.map((item) => {
+          const Icon = getIcon(item)
+          return (
+            <div
+              key={item.id}
+              data-folder-id={item.id}
+              data-item-name={item.name}
+              className={clsx(
+                'w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors relative',
+                'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300',
+                'group cursor-pointer',
+                hoveredItemId === item.id && 'bg-blue-50 dark:bg-blue-900/20'
+              )}
+              onMouseEnter={(e) => handleItemHover(item, e)}
+              onClick={(e) => {
+                console.log('🖱️ Item clicked:', { item: item.name, id: item.id, type })
+                e.stopPropagation()
+                onSelect(item.id)
+              }}
+            >
+              <Icon className={clsx(
+                'h-4 w-4 flex-shrink-0',
+                item.children && item.children.length > 0 
+                  ? 'text-blue-500 dark:text-blue-400' 
+                  : 'text-gray-400'
+              )} />
+              <span className="flex-1">{item.name}</span>
+              {item.children && item.children.length > 0 && (
+                <ChevronRightIcon className="h-4 w-4 text-gray-400" />
+              )}
+              {currentId === item.id && (
+                <CheckIcon className="h-4 w-4 text-blue-500" />
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Child submenu */}
+      {hoveredItemId && childSubmenuPosition && (
+        <CascadingSubmenu
+          items={items.find(item => item.id === hoveredItemId)?.children || []}
+          type={type}
+          currentId={currentId}
+          onSelect={onSelect}
+          position={childSubmenuPosition}
+          level={level + 1}
+        />
+      )}
+    </>
+  )
+}
+
 const ContextMenu: React.FC<ContextMenuProps> = ({
   isOpen,
   position,
@@ -48,16 +279,31 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   onMoveToFolder,
   onMoveToProject
 }) => {
+  console.log('🎭 ContextMenu rendered:', { 
+    isOpen, 
+    folders: folders.length, 
+    projects: projects.length,
+    onMoveToFolder: typeof onMoveToFolder,
+    onMoveToProject: typeof onMoveToProject
+  })
   const [showSubmenu, setShowSubmenu] = useState(false)
   const [submenuType, setSubmenuType] = useState<'folder' | 'project' | null>(null)
   const [focusedIndex, setFocusedIndex] = useState(-1)
   const menuRef = useRef<HTMLDivElement>(null)
-  const submenuRef = useRef<HTMLDivElement>(null)
 
   const menuItems = [
     { id: 'move-folder', label: 'Mover para pasta...', icon: FolderIcon, hasSubmenu: true },
     { id: 'move-project', label: 'Mover para projeto...', icon: RocketLaunchIcon, hasSubmenu: true }
   ]
+
+  // Build hierarchical structures
+  const hierarchicalFolders = buildHierarchy(folders)
+  const hierarchicalProjects = buildHierarchy(projects)
+  
+  console.log('🏗️ Built hierarchies:', {
+    folders: hierarchicalFolders.map(f => ({ name: f.name, children: f.children.length })),
+    projects: hierarchicalProjects.map(p => ({ name: p.name, children: p.children.length }))
+  })
 
   useEffect(() => {
     if (!isOpen) {
@@ -68,12 +314,25 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
     }
 
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        menuRef.current && !menuRef.current.contains(event.target as Node) &&
-        submenuRef.current && !submenuRef.current.contains(event.target as Node)
-      ) {
-        onClose()
+      const target = event.target as Element
+      
+      console.log('🖱️ Click detected, target:', target.className)
+      
+      // Check if click is inside main menu
+      if (menuRef.current && menuRef.current.contains(target)) {
+        console.log('✅ Click inside main menu, keeping open')
+        return
       }
+      
+      // Check if click is inside any context menu related element
+      const contextMenuElement = target.closest('[class*="z-[60]"], [class*="z-50"]')
+      if (contextMenuElement) {
+        console.log('✅ Click inside submenu, keeping open')
+        return
+      }
+      
+      console.log('👆 Clicked outside context menu, closing')
+      onClose()
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -112,6 +371,8 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 
     document.addEventListener('mousedown', handleClickOutside)
     document.addEventListener('keydown', handleKeyDown)
+    
+    console.log('🎧 Event listeners attached for context menu')
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
@@ -120,23 +381,36 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   }, [isOpen, focusedIndex, showSubmenu])
 
   const handleItemClick = (itemId: string) => {
+    console.log('🎪 handleItemClick called:', itemId)
     if (itemId === 'move-folder') {
+      console.log('📁 Opening folder submenu')
       setShowSubmenu(true)
       setSubmenuType('folder')
     } else if (itemId === 'move-project') {
+      console.log('🚀 Opening project submenu')
       setShowSubmenu(true)
       setSubmenuType('project')
     }
   }
 
   const handleFolderSelect = (folderId: string) => {
+    console.log('🎯 handleFolderSelect called with folderId:', folderId)
+    console.log('🔧 onMoveToFolder function exists:', typeof onMoveToFolder)
+    
+    // Execute the move first
     onMoveToFolder(folderId)
-    onClose()
+    // Close after a small delay to ensure the action completes
+    setTimeout(() => onClose(), 0)
   }
 
   const handleProjectSelect = (projectId: string) => {
+    console.log('🎯 handleProjectSelect called with projectId:', projectId)
+    console.log('🔧 onMoveToProject function exists:', typeof onMoveToProject)
+    
+    // Execute the move first
     onMoveToProject(projectId)
-    onClose()
+    // Close after a small delay to ensure the action completes
+    setTimeout(() => onClose(), 0)
   }
 
   const getMenuPosition = () => {
@@ -167,30 +441,25 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   }
 
   const getSubmenuPosition = () => {
-    if (!menuRef.current) return {}
+    if (!menuRef.current) return { x: 0, y: 0 }
 
     const menuRect = menuRef.current.getBoundingClientRect()
-    const submenuWidth = 200
-    const itemsCount = submenuType === 'folder' ? folders.length : projects.length
-    const submenuHeight = (itemsCount + 1) * 40 + 16 // +1 for "None" option
-
     let x = menuRect.right + 8
     let y = menuRect.top
 
     // Adjust horizontal position if submenu would go off screen
+    const submenuWidth = 200
     if (x + submenuWidth > window.innerWidth) {
       x = menuRect.left - submenuWidth - 8
     }
 
     // Adjust vertical position if submenu would go off screen
-    if (y + submenuHeight > window.innerHeight) {
-      y = window.innerHeight - submenuHeight - 10
+    const maxSubmenuHeight = 400 // Estimate max height
+    if (y + maxSubmenuHeight > window.innerHeight) {
+      y = Math.max(10, window.innerHeight - maxSubmenuHeight - 10)
     }
 
-    return {
-      left: `${x}px`,
-      top: `${y}px`
-    }
+    return { x, y }
   }
 
   if (!isOpen) return null
@@ -214,10 +483,15 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
                 focusedIndex === index && 'bg-gray-50 dark:bg-gray-700',
                 'text-gray-700 dark:text-gray-300'
               )}
-              onClick={() => handleItemClick(item.id)}
+              onClick={() => {
+                console.log('🔘 Main menu button clicked:', item.id)
+                handleItemClick(item.id)
+              }}
               onMouseEnter={() => {
+                console.log('🖱️ Mouse entered main menu item:', item.id)
                 setFocusedIndex(index)
                 if (item.hasSubmenu) {
+                  console.log('📋 Opening submenu on hover for:', item.id)
                   setShowSubmenu(true)
                   setSubmenuType(item.id === 'move-folder' ? 'folder' : 'project')
                 } else {
@@ -236,72 +510,22 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
         })}
       </div>
 
-      {/* Submenu for Move to Folder or Project */}
-      {showSubmenu && (
-        <div
-          ref={submenuRef}
-          className="fixed z-50 min-w-[200px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-2"
-          style={getSubmenuPosition()}
-        >
-          {/* None option */}
-          <button
-            className={clsx(
-              'w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors',
-              'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-            )}
-            onClick={() => {
-              if (submenuType === 'folder') {
-                handleFolderSelect('')
-              } else {
-                handleProjectSelect('')
-              }
-            }}
-          >
-            <div className="h-4 w-4 flex-shrink-0" />
-            <span className="flex-1 text-gray-500 dark:text-gray-400">Nenhum</span>
-            {((submenuType === 'folder' && !currentFolder) || (submenuType === 'project' && !currentProject)) && (
-              <CheckIcon className="h-4 w-4 text-blue-500" />
-            )}
-          </button>
-
-          {/* Folder options */}
-          {submenuType === 'folder' && folders.map((folder) => (
-            <button
-              key={folder.id}
-              className={clsx(
-                'w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors',
-                'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-              )}
-              onClick={() => handleFolderSelect(folder.id)}
-              style={{ paddingLeft: `${16 + (folder.level || 0) * 16}px` }}
-            >
-              <FolderIcon className="h-4 w-4 flex-shrink-0 text-gray-400" />
-              <span className="flex-1">{folder.name}</span>
-              {currentFolder === folder.id && (
-                <CheckIcon className="h-4 w-4 text-blue-500" />
-              )}
-            </button>
-          ))}
-
-          {/* Project options */}
-          {submenuType === 'project' && projects.map((project) => (
-            <button
-              key={project.id}
-              className={clsx(
-                'w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors',
-                'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-              )}
-              onClick={() => handleProjectSelect(project.id)}
-              style={{ paddingLeft: `${16 + (project.level || 0) * 16}px` }}
-            >
-              <RocketLaunchIcon className="h-4 w-4 flex-shrink-0 text-gray-400" />
-              <span className="flex-1">{project.name}</span>
-              {currentProject === project.id && (
-                <CheckIcon className="h-4 w-4 text-blue-500" />
-              )}
-            </button>
-          ))}
-        </div>
+      {/* Cascading Submenu */}
+      {showSubmenu && submenuType && (
+        <>
+          {console.log('🎪 Rendering submenu:', { 
+            submenuType, 
+            items: submenuType === 'folder' ? hierarchicalFolders.length : hierarchicalProjects.length,
+            onSelect: submenuType === 'folder' ? 'handleFolderSelect' : 'handleProjectSelect'
+          })}
+          <CascadingSubmenu
+            items={submenuType === 'folder' ? hierarchicalFolders : hierarchicalProjects}
+            type={submenuType}
+            currentId={submenuType === 'folder' ? currentFolder : currentProject}
+            onSelect={submenuType === 'folder' ? handleFolderSelect : handleProjectSelect}
+            position={getSubmenuPosition()}
+          />
+        </>
       )}
     </>,
     document.body

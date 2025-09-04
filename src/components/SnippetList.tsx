@@ -23,8 +23,6 @@ const SnippetList: React.FC = () => {
     searchQuery, 
     searchResults,
     toggleFavorite,
-    updateSnippet,
-    duplicateSnippet,
     deleteSnippet,
     selectedFolderId,
     selectedProjectId,
@@ -32,7 +30,9 @@ const SnippetList: React.FC = () => {
     folders,
     projectItems,
     getDescendantFolders,
-    getDescendantProjects
+    getDescendantProjects,
+    moveSnippetToFolder,
+    moveSnippetToProject
   } = useStore()
 
   const { isOpen, position, targetSnippet, openContextMenu, closeContextMenu } = useContextMenu()
@@ -67,11 +67,34 @@ const SnippetList: React.FC = () => {
         snippet.language?.toLowerCase() === language
       )
     } else if (selectedFolderId) {
-      // Filter by specific folder (only direct snippets)
-      baseSnippets = baseSnippets.filter(snippet => snippet.folderId === selectedFolderId)
+      // Filter by specific folder (include snippets in this folder and all descendant folders)
+      const folder = folders.find(f => f.id === selectedFolderId)
+      if (folder) {
+        // Get all descendant folders
+        const descendantFolders = getDescendantFolders(selectedFolderId)
+        const allFolderIds = [selectedFolderId, ...descendantFolders.map(f => f.id)]
+        baseSnippets = baseSnippets.filter(snippet => 
+          allFolderIds.includes(snippet.folderId || '')
+        )
+      }
     } else if (selectedProjectId) {
-      // Filter by specific project (only direct snippets)
-      baseSnippets = baseSnippets.filter(snippet => snippet.projectId === selectedProjectId)
+      // Filter by specific project (show all snippets in folders within this project hierarchy)
+      const project = projectItems.find(p => p.id === selectedProjectId)
+      if (project) {
+        // Get all descendant projects
+        const descendantProjects = getDescendantProjects(selectedProjectId)
+        const allProjectIds = [selectedProjectId, ...descendantProjects.map(p => p.id)]
+        
+        // Get all folders that belong to these projects
+        const projectFolderIds = folders
+          .filter(folder => allProjectIds.includes(folder.parentId || ''))
+          .map(folder => folder.id)
+        
+        // Include snippets that are in any of these project folders
+        baseSnippets = baseSnippets.filter(snippet => 
+          projectFolderIds.includes(snippet.folderId || '')
+        )
+      }
     }
     
     return [...baseSnippets].sort((a, b) => {
@@ -126,73 +149,53 @@ const SnippetList: React.FC = () => {
     return 'Snippets'
   }
 
-  // Separate folders and projects for the context menu
-  const contextMenuFolders: ContextMenuFolder[] = folders.map(folder => ({ 
-    id: folder.id, 
-    name: folder.name, 
-    level: 0 
-  }))
+  // Transform folders and projects to the format expected by ContextMenu
+  // Only include root-level folders (not project folders) in the folder menu
+  const contextMenuFolders: ContextMenuFolder[] = folders
+    .filter(folder => !folder.parentId || !projectItems.some(p => p.id === folder.parentId))
+    .map(folder => ({ 
+      id: folder.id, 
+      name: folder.name, 
+      parentId: folder.parentId && !projectItems.some(p => p.id === folder.parentId) ? folder.parentId : undefined
+    }))
 
-  const contextMenuProjects: ContextMenuProject[] = projectItems.map(project => ({ 
+  // For projects - we need to handle them specially since moving to a project
+  // actually moves to a folder within that project
+  const contextMenuProjects: ContextMenuProject[] = projectItems.map(project => ({
     id: project.id, 
     name: project.name, 
-    level: 0 
+    parentId: project.parentId
   }))
 
-  const handleMoveToFolder = (folderId: string) => {
-    if (!targetSnippet) return
+  console.log('📂 Context menu data:', { 
+    totalFolders: folders.length, 
+    contextMenuFolders: contextMenuFolders.length, 
+    totalProjects: projectItems.length,
+    contextMenuProjects: contextMenuProjects.length,
+    folders: folders.map(f => ({ id: f.id, name: f.name, parentId: f.parentId })),
+    projects: projectItems.map(p => ({ id: p.id, name: p.name, parentId: p.parentId }))
+  })
 
-    if (folderId === '') {
-      // Remove from any folder (keep project if it exists)
-      updateSnippet(targetSnippet.id, { 
-        folderId: undefined 
-      })
-    } else {
-      // Move to folder (and clear project due to exclusivity)
-      updateSnippet(targetSnippet.id, { 
-        folderId: folderId, 
-        projectId: undefined 
-      })
+  const handleMoveToFolder = (folderId: string) => {
+    if (!targetSnippet) {
+      console.warn('No target snippet found for move operation')
+      return
     }
+    
+    console.log('Moving snippet to folder:', { snippetId: targetSnippet.id, folderId })
+    moveSnippetToFolder(targetSnippet.id, folderId === '' ? null : folderId)
   }
 
   const handleMoveToProject = (projectId: string) => {
-    if (!targetSnippet) return
-
-    if (projectId === '') {
-      // Remove from any project (keep folder if it exists)
-      updateSnippet(targetSnippet.id, { 
-        projectId: undefined 
-      })
-    } else {
-      // Move to project (and clear folder due to exclusivity)
-      updateSnippet(targetSnippet.id, { 
-        folderId: undefined, 
-        projectId: projectId 
-      })
+    if (!targetSnippet) {
+      console.warn('No target snippet found for move operation')
+      return
     }
+    
+    console.log('Moving snippet to project:', { snippetId: targetSnippet.id, projectId })
+    moveSnippetToProject(targetSnippet.id, projectId === '' ? null : projectId)
   }
 
-  const handleEditSnippet = () => {
-    if (targetSnippet) {
-      setEditingSnippet(targetSnippet)
-      setShowEditModal(true)
-    }
-  }
-
-  const handleDuplicateSnippet = () => {
-    if (targetSnippet) {
-      const duplicated = duplicateSnippet(targetSnippet.id)
-      if (duplicated) {
-        setEditingSnippet(duplicated)
-        setShowEditModal(true)
-      }
-    }
-  }
-
-  const handleDeleteSnippet = () => {
-    setShowDeleteModal(true)
-  }
 
   const confirmDelete = () => {
     if (targetSnippet) {
@@ -435,15 +438,25 @@ const SnippetList: React.FC = () => {
                       <span className="capitalize font-medium text-gray-600 dark:text-gray-400">{snippet.language}</span>
                     </div>
                     
-                    {/* Projeto/Pasta */}
-                    {snippet.projectId && (
+                    {/* Pasta e Projeto */}
+                    {snippet.folderId && (
                       <>
                         <span className="text-gray-300 dark:text-gray-600">•</span>
                         <div className="flex items-center gap-1">
                           <svg className="h-3 w-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.58-5.84a14.98 14.98 0 012.58 5.84M15.59 14.37L9.63 8.41m5.96 5.96L9.63 8.41" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
                           </svg>
-                          <span className="text-gray-500 dark:text-gray-500 truncate max-w-20">Projeto</span>
+                          {(() => {
+                            const folder = folders.find(f => f.id === snippet.folderId)
+                            if (!folder) return <span className="text-gray-500 dark:text-gray-500 truncate max-w-20">Pasta</span>
+                            
+                            // Check if this folder belongs to a project
+                            const parentProject = folder.parentId ? projectItems.find(p => p.id === folder.parentId) : null
+                            if (parentProject) {
+                              return <span className="text-gray-500 dark:text-gray-500 truncate max-w-20">{parentProject.name}/{folder.name}</span>
+                            }
+                            return <span className="text-gray-500 dark:text-gray-500 truncate max-w-20">{folder.name}</span>
+                          })()}
                         </div>
                       </>
                     )}

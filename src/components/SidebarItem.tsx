@@ -107,12 +107,12 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
     console.log('🔍 startCreatingFolder called with:', realParentId)
   }
 
-  const handleCreateSubproject = (parentId: string) => {
+  const handleCreateSubproject = () => {
     // This should never be called due to hierarchy rules, but kept for interface compatibility
     console.warn('Creating subprojects is not allowed according to hierarchy rules')
   }
 
-  const handleRename = (itemId: string) => {
+  const handleRename = () => {
     setIsEditing(true)
   }
 
@@ -159,7 +159,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
         console.log('🔍 creatingFolderState:', creatingFolderState)
         const parentId = creatingFolderState === 'root' ? undefined : creatingFolderState
         console.log('🔍 calling addFolder with:', { name: trimmedValue, parentId })
-        addFolder(trimmedValue, parentId)
+        addFolder(trimmedValue, parentId || undefined)
       } else if (item.id === 'creating-project') {
         // Create new project - always at root level for now
         console.log('🔍 calling addProjectItem with:', trimmedValue)

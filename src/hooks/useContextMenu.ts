@@ -15,6 +15,7 @@ export function useContextMenu(): UseContextMenuReturn {
   const [targetSnippet, setTargetSnippet] = useState<any | null>(null)
 
   const openContextMenu = useCallback((event: React.MouseEvent, snippet: any) => {
+    console.log('🎯 openContextMenu called with snippet:', { title: snippet?.title, id: snippet?.id })
     event.preventDefault()
     event.stopPropagation()
 
@@ -24,9 +25,11 @@ export function useContextMenu(): UseContextMenuReturn {
     })
     setTargetSnippet(snippet)
     setIsOpen(true)
+    console.log('📍 Context menu opened, targetSnippet set:', snippet?.id)
   }, [])
 
   const closeContextMenu = useCallback(() => {
+    console.log('❌ closeContextMenu called, clearing targetSnippet')
     setIsOpen(false)
     setTargetSnippet(null)
   }, [])
