@@ -167,32 +167,13 @@ const SnippetList: React.FC = () => {
     parentId: project.parentId
   }))
 
-  console.log('📂 Context menu data:', { 
-    totalFolders: folders.length, 
-    contextMenuFolders: contextMenuFolders.length, 
-    totalProjects: projectItems.length,
-    contextMenuProjects: contextMenuProjects.length,
-    folders: folders.map(f => ({ id: f.id, name: f.name, parentId: f.parentId })),
-    projects: projectItems.map(p => ({ id: p.id, name: p.name, parentId: p.parentId }))
-  })
-
   const handleMoveToFolder = (folderId: string) => {
-    if (!targetSnippet) {
-      console.warn('No target snippet found for move operation')
-      return
-    }
-    
-    console.log('Moving snippet to folder:', { snippetId: targetSnippet.id, folderId })
+    if (!targetSnippet) return
     moveSnippetToFolder(targetSnippet.id, folderId === '' ? null : folderId)
   }
 
   const handleMoveToProject = (projectId: string) => {
-    if (!targetSnippet) {
-      console.warn('No target snippet found for move operation')
-      return
-    }
-    
-    console.log('Moving snippet to project:', { snippetId: targetSnippet.id, projectId })
+    if (!targetSnippet) return
     moveSnippetToProject(targetSnippet.id, projectId === '' ? null : projectId)
   }
 
