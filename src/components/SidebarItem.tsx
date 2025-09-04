@@ -54,24 +54,20 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
       return
     }
     
-    if (hasChildren) {
-      onToggle(item.id)
+    // Always handle navigation - regardless of having children
+    if (item.id.startsWith('folder-')) {
+      const folderId = item.id.replace('folder-', '')
+      setSelectedFolder(folderId)
+      setSelectedItem(item.id)
+    } else if (item.id.startsWith('project-')) {
+      const projectId = item.id.replace('project-', '')
+      setSelectedProject(projectId)
+      setSelectedItem(item.id)
     } else {
-      // Handle navigation to folders/projects
-      if (item.id.startsWith('folder-')) {
-        const folderId = item.id.replace('folder-', '')
-        setSelectedFolder(folderId)
-        setSelectedItem(item.id)
-      } else if (item.id.startsWith('project-')) {
-        const projectId = item.id.replace('project-', '')
-        setSelectedProject(projectId)
-        setSelectedItem(item.id)
-      } else {
-        // Clear any folder/project filters for special views
-        setSelectedFolder(null)
-        setSelectedProject(null)
-        setSelectedItem(item.id)
-      }
+      // Clear any folder/project filters for special views
+      setSelectedFolder(null)
+      setSelectedProject(null)
+      setSelectedItem(item.id)
     }
   }
 
@@ -104,8 +100,11 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
   }
 
   const handleCreateSubfolder = (parentId: string) => {
+    console.log('🔍 handleCreateSubfolder called:', { parentId })
     const realParentId = parentId.startsWith('folder-') ? parentId.replace('folder-', '') : parentId.replace('project-', '')
+    console.log('🔍 realParentId:', realParentId)
     startCreatingFolder(realParentId)
+    console.log('🔍 startCreatingFolder called with:', realParentId)
   }
 
   const handleCreateSubproject = (parentId: string) => {
@@ -152,14 +151,18 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
 
   const handleInlineCreateSubmit = () => {
     const trimmedValue = editValue.trim()
+    console.log('🔍 handleInlineCreateSubmit:', { trimmedValue, itemId: item.id })
     if (trimmedValue) {
       if (item.id === 'creating-folder') {
         // Create new folder - check if we're creating in a parent
         const creatingFolderState = useInlineCreation.getState().creatingFolder
+        console.log('🔍 creatingFolderState:', creatingFolderState)
         const parentId = creatingFolderState === 'root' ? undefined : creatingFolderState
+        console.log('🔍 calling addFolder with:', { name: trimmedValue, parentId })
         addFolder(trimmedValue, parentId)
       } else if (item.id === 'creating-project') {
         // Create new project - always at root level for now
+        console.log('🔍 calling addProjectItem with:', trimmedValue)
         addProjectItem(trimmedValue)
       }
       finishCreation()
@@ -278,7 +281,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
             onClick={handleToggleClick}
             className={clsx(
               'absolute right-2 p-1.5 rounded-md hover:bg-gray-200/70 dark:hover:bg-gray-600/40 transition-all duration-200',
-              'flex items-center justify-center opacity-0 group-hover:opacity-100',
+              'flex items-center justify-center opacity-70 hover:opacity-100',
               isExpanded && 'opacity-100'
             )}
           >

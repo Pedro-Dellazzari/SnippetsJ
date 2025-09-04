@@ -154,7 +154,9 @@ function buildProjectHierarchy(projects: ProjectItem[], folders: Folder[], count
     })
   } else if (creatingInParent && projects.some(p => p.id === creatingInParent)) {
     // Creating folder within a project
+    console.log('🔍 useDynamicSidebar: Creating folder in project:', { creatingInParent, projects: projects.map(p => p.id) })
     const parentProject = projectMap.get(creatingInParent)
+    console.log('🔍 parentProject found:', !!parentProject)
     if (parentProject) {
       parentProject.children = parentProject.children || []
       parentProject.children.push({
@@ -164,6 +166,7 @@ function buildProjectHierarchy(projects: ProjectItem[], folders: Folder[], count
         type: 'folder' as const,
         isCreating: true
       })
+      console.log('🔍 Added creating-folder to project children')
     }
   } else if (creatingInParent && folderMap.has(creatingInParent)) {
     // Creating subfolder within a folder that's inside a project
