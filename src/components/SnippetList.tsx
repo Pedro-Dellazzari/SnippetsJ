@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { useStore } from '../store/useStore'
 import clsx from 'clsx'
 import { formatDistanceToNow } from 'date-fns'
@@ -14,6 +14,59 @@ import NewSnippetModal from './NewSnippetModal'
 import EmptyState from './EmptyState'
 
 type SortOption = 'newest' | 'oldest' | 'favorites' | 'language' | 'mostUsed'
+
+// CSS customizado otimizado para animações
+const animationStyles = `
+  @keyframes fadeInOverlay {
+    from {
+      opacity: 0;
+      transform: translateZ(0) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateZ(0) scale(1);
+    }
+  }
+
+  @keyframes zoomInIcon {
+    from {
+      opacity: 0;
+      transform: translateZ(0) scale(0.75);
+    }
+    to {
+      opacity: 1;
+      transform: translateZ(0) scale(1);
+    }
+  }
+
+  @keyframes slideInText {
+    from {
+      opacity: 0;
+      transform: translateZ(0) translateX(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateZ(0) translateX(0);
+    }
+  }
+
+  @keyframes ping {
+    75%, 100% {
+      transform: translateZ(0) scale(2);
+      opacity: 0;
+    }
+  }
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: translateZ(0) scale(0.98);
+    }
+    50% {
+      opacity: 0.8;
+      transform: translateZ(0) scale(0.96);
+    }
+  }
+`
 
 const SnippetList: React.FC = () => {
   const { 
@@ -43,6 +96,28 @@ const SnippetList: React.FC = () => {
   const [editingSnippet, setEditingSnippet] = useState<any>(null)
   const [sortBy, setSortBy] = useState<SortOption>('newest')
   const [showSortDropdown, setShowSortDropdown] = useState(false)
+  const [copiedSnippetId, setCopiedSnippetId] = useState<string | null>(null)
+  const [clickedSnippetId, setClickedSnippetId] = useState<string | null>(null)
+
+  // Inject CSS styles once
+  useEffect(() => {
+    const styleId = 'snippet-copy-animations'
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style')
+      style.id = styleId
+      style.textContent = animationStyles
+      document.head.appendChild(style)
+    }
+  }, [])
+
+  // Optimize timeout callbacks
+  const clearCopiedState = useCallback(() => {
+    setCopiedSnippetId(null)
+  }, [])
+
+  const clearClickedState = useCallback(() => {
+    setClickedSnippetId(null)  
+  }, [])
 
   // Função para filtrar e ordenar snippets
   const sortedSnippets = useMemo(() => {
@@ -177,6 +252,51 @@ const SnippetList: React.FC = () => {
     moveSnippetToProject(targetSnippet.id, projectId === '' ? null : projectId)
   }
 
+  const handleCopySnippet = useCallback(async (snippet: any) => {
+    // Verificar se o snippet tem conteúdo
+    if (!snippet.content || typeof snippet.content !== 'string') {
+      console.warn('Snippet has no content to copy')
+      return
+    }
+
+    // Feedback imediato do clique
+    setClickedSnippetId(snippet.id)
+    setTimeout(clearClickedState, 150)
+
+    try {
+      // Verificar se a API clipboard está disponível
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(snippet.content)
+        setCopiedSnippetId(snippet.id)
+        
+        // Remove o feedback após 2 segundos para melhor percepção
+        setTimeout(clearCopiedState, 2000)
+      } else {
+        // Fallback para browsers mais antigos ou contextos não seguros
+        const textArea = document.createElement('textarea')
+        textArea.value = snippet.content
+        textArea.style.position = 'fixed'
+        textArea.style.left = '-999999px'
+        textArea.style.top = '-999999px'
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        
+        const successful = document.execCommand('copy')
+        document.body.removeChild(textArea)
+        
+        if (successful) {
+          setCopiedSnippetId(snippet.id)
+          setTimeout(clearCopiedState, 2000)
+        } else {
+          console.error('Failed to copy using fallback method')
+        }
+      }
+    } catch (error) {
+      console.error('Failed to copy snippet content:', error)
+    }
+  }, [clearCopiedState, clearClickedState])
+
 
   const confirmDelete = () => {
     if (targetSnippet) {
@@ -295,14 +415,26 @@ const SnippetList: React.FC = () => {
               <div
                 key={snippet.id}
                 onClick={() => setSelectedSnippet(snippet)}
+                onDoubleClick={() => handleCopySnippet(snippet)}
                 onContextMenu={(e) => openContextMenu(e, snippet)}
                 className={clsx(
-                  'px-4 py-2.5 cursor-pointer transition-all duration-200 group relative',
-                  'hover:bg-gray-50 dark:hover:bg-gray-800/50',
+                  'px-4 py-2.5 cursor-pointer group relative',
+                  'transition-all duration-300 ease-out will-change-transform',
+                  'hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:scale-[1.01] hover:shadow-sm',
                   selectedSnippet?.id === snippet.id 
                     ? 'bg-blue-50/50 dark:bg-blue-900/10 border-l-2 border-l-blue-500' 
-                    : ''
+                    : '',
+                  copiedSnippetId === snippet.id 
+                    ? 'bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 scale-[1.03] shadow-lg shadow-green-100/50 dark:shadow-green-900/20' 
+                    : '',
+                  clickedSnippetId === snippet.id && 'scale-[0.98]'
                 )}
+                style={{
+                  transform: copiedSnippetId === snippet.id ? 'scale(1.03) translateZ(0)' : 
+                           clickedSnippetId === snippet.id ? 'scale(0.98) translateZ(0)' : 'translateZ(0)',
+                  animation: clickedSnippetId === snippet.id ? 'pulse 0.15s ease-in-out' : 'none',
+                  willChange: clickedSnippetId === snippet.id || copiedSnippetId === snippet.id ? 'transform, opacity' : 'auto'
+                }}
               >
                 {/* Título */}
                 <div className="flex items-start justify-between mb-1">
@@ -319,6 +451,7 @@ const SnippetList: React.FC = () => {
                           setEditingSnippet(snippet)
                           setShowEditModal(true)
                         }}
+                        onDoubleClick={(e) => e.stopPropagation()}
                         className="p-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-md transition-colors duration-150 text-gray-400 hover:text-blue-600"
                       >
                         <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -333,6 +466,7 @@ const SnippetList: React.FC = () => {
                           e.stopPropagation()
                           toggleFavorite(snippet.id)
                         }}
+                        onDoubleClick={(e) => e.stopPropagation()}
                         className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-md transition-colors duration-150 text-gray-400 hover:text-red-500"
                       >
                         {snippet.favorite ? (
@@ -349,6 +483,7 @@ const SnippetList: React.FC = () => {
                           e.stopPropagation()
                           openContextMenu(e, snippet)
                         }}
+                        onDoubleClick={(e) => e.stopPropagation()}
                         className="p-1.5 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-md transition-colors duration-150 text-gray-400 hover:text-green-600"
                       >
                         <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -363,6 +498,7 @@ const SnippetList: React.FC = () => {
                           e.stopPropagation()
                           openContextMenu(e, snippet)
                         }}
+                        onDoubleClick={(e) => e.stopPropagation()}
                         className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-md transition-colors duration-150 text-gray-400 hover:text-red-600"
                       >
                         <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -475,6 +611,55 @@ const SnippetList: React.FC = () => {
                     <span>{formatDate(snippet.updatedAt)}</span>
                   </div>
                 </div>
+
+                {/* Overlay de feedback de cópia */}
+                {copiedSnippetId === snippet.id && (
+                  <div 
+                    className="absolute inset-0 flex items-center justify-center bg-white/96 dark:bg-gray-800/96 backdrop-blur-lg rounded-lg border border-green-200/40 dark:border-green-700/40"
+                    style={{
+                      animation: 'fadeInOverlay 0.7s ease-in-out forwards',
+                      willChange: 'opacity, transform',
+                      transform: 'translateZ(0)'
+                    }}
+                  >
+                    <div className="flex items-center gap-3 text-green-700 dark:text-green-300 font-semibold text-lg">
+                      <div 
+                        className="relative"
+                        style={{
+                          animation: 'zoomInIcon 0.8s ease-out 0.2s both',
+                          willChange: 'transform',
+                          transform: 'translateZ(0)'
+                        }}
+                      >
+                        <div 
+                          className="absolute inset-0 bg-green-500/20 rounded-full"
+                          style={{
+                            animation: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite',
+                            willChange: 'transform, opacity'
+                          }}
+                        ></div>
+                        <svg 
+                          className="h-7 w-7 relative z-10 drop-shadow-lg" 
+                          fill="currentColor" 
+                          viewBox="0 0 24 24"
+                          style={{ transform: 'translateZ(0)' }}
+                        >
+                          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                        </svg>
+                      </div>
+                      <span 
+                        className="drop-shadow-sm tracking-wide"
+                        style={{
+                          animation: 'slideInText 0.8s ease-out 0.4s both',
+                          willChange: 'transform, opacity',
+                          transform: 'translateZ(0)'
+                        }}
+                      >
+                        Copiado!
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
