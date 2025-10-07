@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { XMarkIcon, DocumentDuplicateIcon, CheckIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline'
 import { useStore } from '../store/useStore'
 import { Snippet } from '../types'
 import Editor from '@monaco-editor/react'

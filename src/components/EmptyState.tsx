@@ -1,10 +1,7 @@
 import React from 'react'
-import { useStore } from '../store/useStore'
 import { 
   CodeBracketIcon, 
-  PlusIcon, 
-  DocumentArrowDownIcon,
-  SparklesIcon
+  PlusIcon
 } from '@heroicons/react/24/outline'
 
 interface EmptyStateProps {
@@ -12,11 +9,6 @@ interface EmptyStateProps {
 }
 
 const EmptyState: React.FC<EmptyStateProps> = ({ onCreateNew }) => {
-  const importExampleData = useStore(state => state.importExampleData)
-
-  const handleImportExamples = () => {
-    importExampleData()
-  }
 
   return (
     <div className="flex flex-col items-center justify-center h-full text-center px-8">
@@ -33,21 +25,13 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onCreateNew }) => {
         </p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm">
+      <div className="flex justify-center w-full max-w-sm">
         <button
           onClick={onCreateNew}
-          className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl"
+          className="flex items-center justify-center gap-2 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl"
         >
           <PlusIcon className="w-5 h-5" />
-          Criar Snippet
-        </button>
-        
-        <button
-          onClick={handleImportExamples}
-          className="flex items-center justify-center gap-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-all duration-200 hover:scale-105 border border-gray-200 dark:border-gray-700"
-        >
-          <SparklesIcon className="w-5 h-5" />
-          Importar Exemplos
+          Criar Primeiro Snippet
         </button>
       </div>
 

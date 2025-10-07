@@ -29,8 +29,19 @@ const SidebarSection: React.FC<SidebarSectionProps> = ({
     }
   }
 
+  // Add CSS class for tutorial targeting
+  const getSectionClass = () => {
+    switch (section.id) {
+      case 'global-view': return 'sidebar-todos'
+      case 'folders': return 'sidebar-folders'
+      case 'languages': return 'sidebar-languages'
+      case 'projects': return 'sidebar-projects'
+      default: return ''
+    }
+  }
+
   return (
-    <div className="mb-8">
+    <div className={clsx("mb-8", getSectionClass())}>
       {/* Section Header */}
       <div 
         className={clsx(

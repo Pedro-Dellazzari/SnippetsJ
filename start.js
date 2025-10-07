@@ -1,16 +1,45 @@
 const { spawn } = require('child_process');
 const http = require('http');
+const net = require('net');
 
 console.log('🚀 Iniciando Snippets App...\n');
 
+// Função para verificar se a porta está aberta
+function checkPort(port, timeout = 2000) {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+
+    socket.setTimeout(timeout);
+
+    socket.on('connect', () => {
+      socket.destroy();
+      resolve(true);
+    });
+
+    socket.on('timeout', () => {
+      socket.destroy();
+      resolve(false);
+    });
+
+    socket.on('error', () => {
+      socket.destroy();
+      resolve(false);
+    });
+
+    socket.connect(port, 'localhost');
+  });
+}
+
 // Função para verificar se o servidor está rodando
-function checkServer(url, timeout = 1000) {
+function checkServer(url, timeout = 2000) {
   return new Promise((resolve) => {
     const request = http.get(url, (res) => {
       resolve(res.statusCode === 200);
     });
-    
-    request.on('error', () => resolve(false));
+
+    request.on('error', (err) => {
+      resolve(false);
+    });
     request.setTimeout(timeout, () => {
       request.destroy();
       resolve(false);
@@ -19,13 +48,21 @@ function checkServer(url, timeout = 1000) {
 }
 
 // Função para aguardar o servidor
-async function waitForServer(url, maxAttempts = 60) {
+async function waitForServer(port, maxAttempts = 60) {
+  console.log(`🔍 Verificando se a porta ${port} está aberta...`);
+
   for (let i = 0; i < maxAttempts; i++) {
-    if (await checkServer(url)) {
+    const portOpen = await checkPort(port);
+    if (portOpen) {
+      console.log(`✅ Porta ${port} está aberta!`);
+      // Aguarda mais um pouco para garantir que o servidor está totalmente pronto
+      await new Promise(resolve => setTimeout(resolve, 1000));
       return true;
     }
-    console.log(`⏳ Aguardando React... (${i + 1}/${maxAttempts})`);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    if ((i + 1) % 10 === 0 || i < 3) {
+      console.log(`⏳ Aguardando porta ${port}... (${i + 1}/${maxAttempts})`);
+    }
+    await new Promise(resolve => setTimeout(resolve, 500));
   }
   return false;
 }
@@ -40,10 +77,13 @@ async function start() {
 
   // Aguardar React inicializar
   console.log('⏳ Aguardando React inicializar...');
-  const reactReady = await waitForServer('http://localhost:3000');
-  
+  await new Promise(resolve => setTimeout(resolve, 3000)); // Espera inicial de 3 segundos
+  const reactReady = await waitForServer(3000);
+
   if (!reactReady) {
     console.error('❌ React não iniciou a tempo');
+    console.error('💡 Tente verificar se há algo bloqueando a porta 3000');
+    vite.kill();
     process.exit(1);
   }
 

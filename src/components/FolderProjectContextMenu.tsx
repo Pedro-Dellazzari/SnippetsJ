@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import clsx from 'clsx'
 import {
   FolderPlusIcon,
-  RocketLaunchIcon,
   PencilIcon,
   TrashIcon
 } from '@heroicons/react/24/outline'
@@ -34,7 +33,6 @@ const FolderProjectContextMenu: React.FC<FolderProjectContextMenuProps> = ({
   itemName,
   onClose,
   onCreateSubfolder,
-  onCreateSubproject,
   onRename,
   onDelete
 }) => {

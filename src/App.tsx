@@ -1,10 +1,13 @@
-import React, { useEffect } from 'react'
+import { useEffect } from 'react'
 import { useStore } from './store/useStore'
 import { FocusModeProvider, useFocusMode } from './contexts/FocusModeContext'
+import { OnboardingProvider } from './contexts/OnboardingContext'
 import Sidebar from './components/Sidebar'
 import SnippetList from './components/SnippetList'
 import SnippetDetail from './components/SnippetDetail'
 import SearchBar from './components/SearchBar'
+import OnboardingTour from './components/OnboardingTour'
+import DebugPanel from './components/DebugPanel'
 
 function AppContent() {
   const loadPersistedData = useStore(state => state.loadPersistedData)
@@ -24,15 +27,20 @@ function AppContent() {
         {!isFocusMode && <SnippetList />}
         <SnippetDetail />
       </div>
+      
+      <OnboardingTour />
+      <DebugPanel />
     </div>
   )
 }
 
 function App() {
   return (
-    <FocusModeProvider>
-      <AppContent />
-    </FocusModeProvider>
+    <OnboardingProvider>
+      <FocusModeProvider>
+        <AppContent />
+      </FocusModeProvider>
+    </OnboardingProvider>
   )
 }
 

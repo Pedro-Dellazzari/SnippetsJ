@@ -258,6 +258,12 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
     return {}
   }
 
+  // Add tutorial targeting classes
+  const getTutorialClass = () => {
+    if (item.id === 'favorites') return 'sidebar-favorites'
+    return ''
+  }
+
   return (
     <div>
       <div
@@ -268,7 +274,8 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
           'flex items-center gap-3 py-2 pr-3 cursor-pointer transition-all duration-200 group relative rounded-md mx-1',
           getItemStyles(),
           hasChildren && 'pr-10',
-          'hover:scale-[1.02] active:scale-[0.98]'
+          'hover:scale-[1.02] active:scale-[0.98]',
+          getTutorialClass()
         )}
         style={{ 
           paddingLeft: `${paddingLeft}px`,

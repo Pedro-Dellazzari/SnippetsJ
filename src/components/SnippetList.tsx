@@ -94,6 +94,7 @@ const SnippetList: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showNewModal, setShowNewModal] = useState(false)
   const [editingSnippet, setEditingSnippet] = useState<any>(null)
+  const [snippetToDelete, setSnippetToDelete] = useState<any>(null)
   const [sortBy, setSortBy] = useState<SortOption>('newest')
   const [showSortDropdown, setShowSortDropdown] = useState(false)
   const [copiedSnippetId, setCopiedSnippetId] = useState<string | null>(null)
@@ -298,11 +299,16 @@ const SnippetList: React.FC = () => {
   }, [clearCopiedState, clearClickedState])
 
 
-  const confirmDelete = () => {
-    if (targetSnippet) {
-      deleteSnippet(targetSnippet.id)
-      closeContextMenu()
+  const handleDirectDelete = (snippet: any) => {
+    setSnippetToDelete(snippet)
+    setShowDeleteModal(true)
+  }
+
+  const confirmDirectDelete = () => {
+    if (snippetToDelete) {
+      deleteSnippet(snippetToDelete.id)
       setShowDeleteModal(false)
+      setSnippetToDelete(null)
     }
   }
 
@@ -418,7 +424,7 @@ const SnippetList: React.FC = () => {
                 onDoubleClick={() => handleCopySnippet(snippet)}
                 onContextMenu={(e) => openContextMenu(e, snippet)}
                 className={clsx(
-                  'px-4 py-2.5 cursor-pointer group relative',
+                  'px-4 py-2.5 cursor-pointer group relative snippet-card',
                   'transition-all duration-300 ease-out will-change-transform',
                   'hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:scale-[1.01] hover:shadow-sm',
                   selectedSnippet?.id === snippet.id 
@@ -496,7 +502,7 @@ const SnippetList: React.FC = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          openContextMenu(e, snippet)
+                          handleDirectDelete(snippet)
                         }}
                         onDoubleClick={(e) => e.stopPropagation()}
                         className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-md transition-colors duration-150 text-gray-400 hover:text-red-600"
@@ -687,17 +693,20 @@ const SnippetList: React.FC = () => {
               Excluir snippet
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Tem certeza que deseja excluir "{targetSnippet?.title}"? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir "{snippetToDelete?.title}"? Esta ação não pode ser desfeita.
             </p>
             <div className="flex gap-3 justify-end">
               <button
-                onClick={() => setShowDeleteModal(false)}
+                onClick={() => {
+                  setShowDeleteModal(false)
+                  setSnippetToDelete(null)
+                }}
                 className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
               >
                 Cancelar
               </button>
               <button
-                onClick={confirmDelete}
+                onClick={confirmDirectDelete}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
                 Excluir

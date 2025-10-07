@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { Snippet, Category, Project, Tag, AppState, Folder, ProjectItem } from '../types'
+import { Snippet, AppState, Folder, ProjectItem } from '../types'
 import Fuse from 'fuse.js'
 import { storage } from '../utils/storage'
 
@@ -16,7 +16,6 @@ interface StoreActions {
   toggleFavorite: (id: string) => void
   searchSnippets: (query: string) => void
   loadPersistedData: () => void
-  importExampleData: () => void
   exportData: () => string
   importData: (jsonData: string) => boolean
   moveSnippetToFolder: (snippetId: string, folderId: string | null) => void
@@ -48,6 +47,8 @@ interface StoreActions {
   deleteProjectItem: (id: string) => void
   forceDeleteProjectItem: (id: string) => void
   getDescendantProjects: (projectId: string) => ProjectItem[]
+  // Data cleanup
+  cleanupOrphanedData: () => void
   // Navigation
   setSelectedFolder: (folderId: string | null) => void
   setSelectedProject: (projectId: string | null) => void
@@ -72,69 +73,6 @@ const initialState: AppState = {
   error: null
 }
 
-// Example data that can be optionally imported
-const exampleData = {
-  categories: [
-    { id: '1', name: 'SQL', color: '#3B82F6', snippetCount: 0 },
-    { id: '2', name: 'Python', color: '#10B981', snippetCount: 0 },
-    { id: '3', name: 'JavaScript', color: '#F59E0B', snippetCount: 0 }
-  ] as Category[],
-  
-  projects: [
-    { id: '1', name: 'Projetos Pessoais', description: 'Snippets para projetos pessoais', snippetCount: 0 }
-  ] as Project[],
-  
-  tags: [
-    { id: '1', name: 'utils', color: '#EF4444', snippetCount: 0 },
-    { id: '2', name: 'exemplo', color: '#8B5CF6', snippetCount: 0 }
-  ] as Tag[],
-  
-  snippets: [
-    {
-      id: 'example-1',
-      title: 'Exemplo: Função de Formatação de Data',
-      description: 'Função JavaScript para formatar datas em português',
-      content: `function formatarData(data) {
-  return new Intl.DateTimeFormat('pt-BR', {
-    day: '2-digit',
-    month: '2-digit', 
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  }).format(new Date(data))
-}
-
-// Uso
-console.log(formatarData(new Date())) // 01/01/2024 10:30`,
-      language: 'javascript',
-      tags: ['utils', 'exemplo'],
-      category: 'JavaScript',
-      favorite: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      usage_count: 0
-    },
-    {
-      id: 'example-2',
-      title: 'Exemplo: Query SQL Básica',
-      description: 'Exemplo de query SQL para consulta com JOIN',
-      content: `SELECT u.nome, p.titulo, p.created_at
-FROM usuarios u
-INNER JOIN posts p ON u.id = p.usuario_id
-WHERE u.ativo = true
-  AND p.created_at >= CURDATE() - INTERVAL 30 DAY
-ORDER BY p.created_at DESC
-LIMIT 10;`,
-      language: 'sql',
-      tags: ['utils', 'exemplo'],
-      category: 'SQL',
-      favorite: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      usage_count: 0
-    }
-  ] as Snippet[]
-}
 
 export const useStore = create<AppState & StoreActions>((set, get) => ({
   ...initialState,
@@ -271,28 +209,11 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
       projectItems: data.projectItems,
       selectedSnippet: data.snippets.length > 0 ? data.snippets[0] : null
     })
-  },
-
-  importExampleData: () => {
-    const currentData = storage.loadAllData()
-    const newData = {
-      snippets: [...currentData.snippets, ...exampleData.snippets],
-      categories: [...currentData.categories, ...exampleData.categories],
-      projects: [...currentData.projects, ...exampleData.projects],
-      tags: [...currentData.tags, ...exampleData.tags],
-      folders: currentData.folders,
-      projectItems: currentData.projectItems
-    }
     
-    storage.saveAllData(newData)
-    set({
-      snippets: newData.snippets,
-      categories: newData.categories,
-      projects: newData.projects,
-      tags: newData.tags,
-      folders: newData.folders,
-      projectItems: newData.projectItems
-    })
+    // Clean up orphaned data after loading
+    setTimeout(() => {
+      get().cleanupOrphanedData()
+    }, 100)
   },
 
   exportData: () => {
@@ -721,5 +642,76 @@ export const useStore = create<AppState & StoreActions>((set, get) => ({
     
     findDescendants(projectId)
     return descendants
+  },
+
+  // Data cleanup function
+  cleanupOrphanedData: () => {
+    const state = get()
+    console.log('🧹 Limpando dados órfãos...')
+    
+    // Log current data for debugging
+    console.log('📊 Estado atual:')
+    console.log('- Snippets:', state.snippets.length)
+    console.log('- Pastas:', state.folders.length)
+    console.log('- Projetos:', state.projectItems.length)
+    console.log('- Categorias:', state.categories.length)
+    console.log('- Tags:', state.tags.length)
+    
+    // List all projects for debugging
+    console.log('📋 Projetos encontrados:')
+    state.projectItems.forEach(project => {
+      console.log(`  - ID: ${project.id}, Nome: ${project.name}, ParentId: ${project.parentId}`)
+    })
+    
+    // Clean up orphaned folders (folders with invalid parentId)
+    const validProjectIds = new Set(state.projectItems.map(p => p.id))
+    const validFolderIds = new Set(state.folders.map(f => f.id))
+    
+    const cleanFolders = state.folders.filter(folder => {
+      if (!folder.parentId) return true // Root folders are valid
+      return validProjectIds.has(folder.parentId) || validFolderIds.has(folder.parentId)
+    })
+    
+    // Clean up orphaned snippets (snippets with invalid folderId or projectId)
+    const cleanSnippets = state.snippets.map(snippet => {
+      const updatedSnippet = { ...snippet }
+      
+      // Clean invalid folder references
+      if (snippet.folderId && !validFolderIds.has(snippet.folderId)) {
+        console.log(`🧹 Removendo folderId inválido '${snippet.folderId}' do snippet '${snippet.title}'`)
+        updatedSnippet.folderId = undefined
+      }
+      
+      // Clean invalid project references
+      if (snippet.projectId && !validProjectIds.has(snippet.projectId)) {
+        console.log(`🧹 Removendo projectId inválido '${snippet.projectId}' do snippet '${snippet.title}'`)
+        updatedSnippet.projectId = undefined
+      }
+      
+      return updatedSnippet
+    })
+    
+    // Update state if changes were made
+    const hasChanges = 
+      cleanFolders.length !== state.folders.length ||
+      cleanSnippets.some((snippet, index) => 
+        snippet.folderId !== state.snippets[index].folderId ||
+        snippet.projectId !== state.snippets[index].projectId
+      )
+    
+    if (hasChanges) {
+      console.log('✅ Aplicando limpeza dos dados...')
+      set({ 
+        folders: cleanFolders,
+        snippets: cleanSnippets
+      })
+      
+      // Save cleaned data
+      storage.saveFolders(cleanFolders)
+      storage.saveSnippets(cleanSnippets)
+      console.log('✅ Dados limpos e salvos!')
+    } else {
+      console.log('✅ Nenhuma limpeza necessária.')
+    }
   }
 }))
