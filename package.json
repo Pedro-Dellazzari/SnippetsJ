@@ -12,6 +12,7 @@
     "build:electron": "npx tsc -p tsconfig.electron.json",
     "dist": "npm run build && npx electron-builder",
     "dist:win": "npm run build && npx electron-builder --win --x64",
+    "dist:portable": "npm run build && npx electron-builder --win portable --x64",
     "lint": "npx eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "npx vite preview"
   },
@@ -64,11 +65,24 @@
     "appId": "com.pedro.snippets-app",
     "productName": "Snippets App",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build"
     },
     "files": [
       "dist/**/*",
-      "node_modules/**/*"
+      "dist-react/**/*",
+      "node_modules/**/*",
+      "!node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!node_modules/*.d.ts",
+      "!node_modules/.bin",
+      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+      "!.editorconfig",
+      "!**/._*",
+      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+      "!**/{appveyor.yml,.travis.yml,circle.yml}",
+      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
     ],
     "mac": {
       "category": "public.app-category.developer-tools"
@@ -84,7 +98,19 @@
           "arch": ["x64"]
         }
       ],
-      "sign": false
+      "signingHashAlgorithms": [],
+      "sign": null,
+      "verifyUpdateCodeSignature": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Snippets App"
+    },
+    "portable": {
+      "artifactName": "${productName} ${version} Portable.${ext}"
     },
     "npmRebuild": false,
     "buildDependenciesFromSource": false
