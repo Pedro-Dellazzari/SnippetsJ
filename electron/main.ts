@@ -1,9 +1,30 @@
 import { app, BrowserWindow, ipcMain, Menu } from 'electron'
 import * as path from 'path'
+import * as fs from 'fs'
 
 let mainWindow: BrowserWindow
 
+function getIconPath(): string | undefined {
+  // Tenta encontrar o ícone em diferentes localizações
+  const possiblePaths = [
+    path.join(__dirname, '../build/icon.ico'),
+    path.join(__dirname, '../build/icon.png'),
+    path.join(process.resourcesPath, 'build/icon.ico'),
+    path.join(process.resourcesPath, 'build/icon.png')
+  ]
+
+  for (const iconPath of possiblePaths) {
+    if (fs.existsSync(iconPath)) {
+      return iconPath
+    }
+  }
+
+  return undefined
+}
+
 function createWindow(): void {
+  const iconPath = getIconPath()
+
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -16,7 +37,8 @@ function createWindow(): void {
     },
     titleBarStyle: 'hiddenInset',
     show: false,
-    backgroundColor: '#ffffff'
+    backgroundColor: '#ffffff',
+    icon: iconPath // Define o ícone da janela
   })
 
   const isDevelopment = process.env.NODE_ENV === 'development' || !app.isPackaged

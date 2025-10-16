@@ -9,9 +9,13 @@ yarn.lock
 # Build outputs
 dist/
 dist-react/
-build/
 out/
 release/
+
+# Build folder (icons are stored here)
+build/
+!build/icon.*
+!build/ICON_README.md
 
 # Environment files
 .env

@@ -17,20 +17,41 @@ const OnboardingTour: React.FC = () => {
   const handleJoyrideCallback = useCallback((data: CallBackProps) => {
     const { status, type, action, index } = data
 
+    // Se finalizou ou pulou o tutorial, fechar
+    if (status === 'finished' || status === 'skipped') {
+      skipOnboarding()
+      return
+    }
+
+    // Se clicou em fechar (X)
+    if (action === ACTIONS.CLOSE) {
+      skipOnboarding()
+      return
+    }
+
+    // Se está na última etapa e clicou em próximo/finalizar
+    if (index === steps.length - 1 && action === ACTIONS.NEXT) {
+      skipOnboarding()
+      return
+    }
+
+    // Navegação entre etapas
     if (type === 'step:after' || type === 'error:target_not_found') {
-      if (action === ACTIONS.NEXT) {
+      if (action === ACTIONS.NEXT && index < steps.length - 1) {
         nextStep()
       } else if (action === ACTIONS.PREV) {
         previousStep()
       }
-    } else if (status === 'finished' || status === 'skipped') {
-      skipOnboarding()
     }
 
     // Handle target not found - skip to next step
     if (type === 'error:target_not_found') {
       console.warn(`Tutorial target not found for step ${index}:`, steps[index]?.target)
-      nextStep()
+      if (index < steps.length - 1) {
+        nextStep()
+      } else {
+        skipOnboarding()
+      }
     }
   }, [nextStep, previousStep, skipOnboarding, steps])
 
