@@ -1,9 +1,11 @@
 import React, { useState } from 'react'
 import { useStore } from '../store/useStore'
+import { useOnboarding } from '../contexts/OnboardingContext'
 
 const DebugPanel: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false)
   const { cleanupOrphanedData, projectItems, folders, snippets } = useStore()
+  const { startOnboarding } = useOnboarding()
 
   const handleCleanup = () => {
     cleanupOrphanedData()
@@ -23,19 +25,19 @@ const DebugPanel: React.FC = () => {
     console.clear()
     console.log('📊 INFORMAÇÕES DE DEBUG:')
     console.log('='.repeat(50))
-    
+
     console.log('\n📁 PROJETOS ATUAIS:')
     projectItems.forEach((project, index) => {
       console.log(`${index + 1}. ${project.name} (ID: ${project.id})`)
       if (project.parentId) console.log(`   └─ Parent: ${project.parentId}`)
     })
-    
+
     console.log('\n📂 PASTAS ATUAIS:')
     folders.forEach((folder, index) => {
       console.log(`${index + 1}. ${folder.name} (ID: ${folder.id})`)
       if (folder.parentId) console.log(`   └─ Parent: ${folder.parentId}`)
     })
-    
+
     console.log('\n📄 SNIPPETS COM REFERÊNCIAS:')
     snippets.forEach((snippet, index) => {
       if (snippet.folderId || snippet.projectId) {
@@ -44,13 +46,19 @@ const DebugPanel: React.FC = () => {
         if (snippet.projectId) console.log(`   └─ ProjectId: ${snippet.projectId}`)
       }
     })
-    
+
     console.log('\n📊 RESUMO:')
     console.log(`- Total de projetos: ${projectItems.length}`)
     console.log(`- Total de pastas: ${folders.length}`)
     console.log(`- Total de snippets: ${snippets.length}`)
-    
+
     alert('Informações de debug enviadas para o console. Abra as ferramentas de desenvolvedor (F12) para ver.')
+  }
+
+  const restartOnboarding = () => {
+    localStorage.removeItem('snippets-app-onboarding-seen')
+    startOnboarding()
+    setIsOpen(false)
   }
 
   if (!isOpen) {
@@ -84,14 +92,21 @@ const DebugPanel: React.FC = () => {
         >
           📊 Mostrar Info de Storage
         </button>
-        
+
+        <button
+          onClick={restartOnboarding}
+          className="w-full px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium"
+        >
+          🎯 Refazer Onboarding
+        </button>
+
         <button
           onClick={handleCleanup}
           className="w-full px-3 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded text-sm font-medium"
         >
           🧹 Limpar Dados Órfãos
         </button>
-        
+
         <button
           onClick={clearAllData}
           className="w-full px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-medium"

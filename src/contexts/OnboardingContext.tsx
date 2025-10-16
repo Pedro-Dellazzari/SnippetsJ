@@ -12,11 +12,15 @@ export interface OnboardingContextType {
   setStep: (stepIndex: number) => void
   skipOnboarding: () => void
   hasSeenOnboarding: boolean
+  showDoubleClickTip: () => void
+  hasSeenDoubleClickTip: boolean
+  isShowingDoubleClickTip: boolean
 }
 
 const OnboardingContext = createContext<OnboardingContextType | null>(null)
 
 const ONBOARDING_SEEN_KEY = 'snippets-app-onboarding-seen'
+const DOUBLE_CLICK_TIP_SEEN_KEY = 'snippets-app-double-click-tip-seen'
 
 const tutorialSteps: Step[] = [
   {
@@ -70,6 +74,14 @@ const tutorialSteps: Step[] = [
   }
 ]
 
+const doubleClickTipStep: Step = {
+  target: '.snippet-card:first-child',
+  content: 'Parabéns pelo seu primeiro snippet! 🎉 Dica rápida: Dê dois cliques rápidos em qualquer snippet para copiá-lo automaticamente para a área de transferência.',
+  title: '⚡ Dica: Copiar com Duplo Clique',
+  placement: 'top',
+  disableBeacon: true
+}
+
 interface OnboardingProviderProps {
   children: React.ReactNode
 }
@@ -78,12 +90,16 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
   const [isOnboardingActive, setIsOnboardingActive] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false)
+  const [hasSeenDoubleClickTip, setHasSeenDoubleClickTip] = useState(false)
+  const [isShowingDoubleClickTip, setIsShowingDoubleClickTip] = useState(false)
 
   // Check if user has seen onboarding on mount
   useEffect(() => {
     const seen = localStorage.getItem(ONBOARDING_SEEN_KEY)
+    const seenDoubleClickTip = localStorage.getItem(DOUBLE_CLICK_TIP_SEEN_KEY)
     setHasSeenOnboarding(!!seen)
-    
+    setHasSeenDoubleClickTip(!!seenDoubleClickTip)
+
     // Start onboarding automatically for new users
     if (!seen) {
       // Delay to ensure UI is rendered
@@ -96,11 +112,13 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
   const startOnboarding = () => {
     setCurrentStep(0)
     setIsOnboardingActive(true)
+    setIsShowingDoubleClickTip(false)
   }
 
   const stopOnboarding = () => {
     setIsOnboardingActive(false)
     setCurrentStep(0)
+    setIsShowingDoubleClickTip(false)
   }
 
   const nextStep = () => {
@@ -121,17 +139,33 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     stopOnboarding()
   }
 
+  const showDoubleClickTip = () => {
+    // Only show if not seen before
+    if (!hasSeenDoubleClickTip) {
+      setCurrentStep(0)
+      setIsOnboardingActive(true)
+      setIsShowingDoubleClickTip(true)
+
+      // Mark as seen after showing
+      localStorage.setItem(DOUBLE_CLICK_TIP_SEEN_KEY, 'true')
+      setHasSeenDoubleClickTip(true)
+    }
+  }
+
   const value: OnboardingContextType = {
     isOnboardingActive,
     currentStep,
-    steps: tutorialSteps,
+    steps: isShowingDoubleClickTip ? [doubleClickTipStep] : tutorialSteps,
     startOnboarding,
     stopOnboarding,
     nextStep,
     previousStep,
     setStep,
     skipOnboarding,
-    hasSeenOnboarding
+    hasSeenOnboarding,
+    showDoubleClickTip,
+    hasSeenDoubleClickTip,
+    isShowingDoubleClickTip
   }
 
   return (

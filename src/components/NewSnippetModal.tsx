@@ -8,6 +8,7 @@ import Toast from './Toast'
 import { useToast } from '../hooks/useToast'
 import { getTagColor, getLightColor } from '../utils/colors'
 import clsx from 'clsx'
+import { useOnboarding } from '../contexts/OnboardingContext'
 
 interface NewSnippetModalProps {
   isOpen: boolean
@@ -20,7 +21,9 @@ const NewSnippetModal: React.FC<NewSnippetModalProps> = ({ isOpen, onClose, edit
   const updateSnippet = useStore(state => state.updateSnippet)
   const folders = useStore(state => state.folders)
   const projectItems = useStore(state => state.projectItems)
+  const snippets = useStore(state => state.snippets)
   const { toast, success, error, hideToast } = useToast()
+  const { showDoubleClickTip, hasSeenDoubleClickTip } = useOnboarding()
   
   const [formData, setFormData] = useState({
     title: '',
@@ -179,11 +182,18 @@ const NewSnippetModal: React.FC<NewSnippetModalProps> = ({ isOpen, onClose, edit
         }
         
         addSnippet(newSnippet)
-        
+
         // Show success message
         success('Snippet criado com sucesso!')
+
+        // If this is the first snippet and user hasn't seen the double-click tip, show it
+        if (snippets.length === 0 && !hasSeenDoubleClickTip) {
+          setTimeout(() => {
+            showDoubleClickTip()
+          }, 1500)
+        }
       }
-      
+
       // Close modal after short delay
       setTimeout(() => {
         onClose()

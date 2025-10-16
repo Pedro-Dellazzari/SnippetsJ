@@ -11,7 +11,8 @@ const OnboardingTour: React.FC = () => {
     steps,
     nextStep,
     previousStep,
-    skipOnboarding
+    skipOnboarding,
+    isShowingDoubleClickTip
   } = useOnboarding()
 
   const handleJoyrideCallback = useCallback((data: CallBackProps) => {
@@ -181,25 +182,27 @@ const OnboardingTour: React.FC = () => {
         <div className="mb-3">
           {step.content}
         </div>
-        <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-600">
-          <div className="flex items-center gap-1">
-            {steps.map((_, i) => (
-              <div
-                key={i}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  i === index
-                    ? 'bg-blue-500 w-6'
-                    : i < index
-                    ? 'bg-blue-300 dark:bg-blue-700'
-                    : 'bg-gray-300 dark:bg-gray-600'
-                }`}
-              />
-            ))}
+        {!isShowingDoubleClickTip && (
+          <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-600">
+            <div className="flex items-center gap-1">
+              {steps.map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-2 h-2 rounded-full transition-all ${
+                    i === index
+                      ? 'bg-blue-500 w-6'
+                      : i < index
+                      ? 'bg-blue-300 dark:bg-blue-700'
+                      : 'bg-gray-300 dark:bg-gray-600'
+                  }`}
+                />
+              ))}
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              {index + 1} de {steps.length}
+            </div>
           </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">
-            {index + 1} de {steps.length}
-          </div>
-        </div>
+        )}
       </div>
     )
   }))
@@ -210,8 +213,8 @@ const OnboardingTour: React.FC = () => {
       run={isOnboardingActive}
       stepIndex={currentStep}
       callback={handleJoyrideCallback}
-      continuous={true}
-      showSkipButton={true}
+      continuous={!isShowingDoubleClickTip}
+      showSkipButton={!isShowingDoubleClickTip}
       showProgress={false}
       hideCloseButton={false}
       scrollToFirstStep={true}
@@ -223,7 +226,7 @@ const OnboardingTour: React.FC = () => {
       locale={{
         back: '← Anterior',
         close: 'Fechar',
-        last: 'Finalizar ✨',
+        last: isShowingDoubleClickTip ? 'Entendi! 👍' : 'Finalizar ✨',
         next: 'Próximo →',
         skip: 'Pular tutorial',
         open: 'Abrir tutorial'
