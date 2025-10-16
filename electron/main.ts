@@ -36,6 +36,7 @@ function createWindow(): void {
       preload: path.join(__dirname, 'preload.js')
     },
     titleBarStyle: 'hiddenInset',
+    autoHideMenuBar: true,
     show: false,
     backgroundColor: '#ffffff',
     icon: iconPath // Define o ícone da janela
@@ -54,50 +55,8 @@ function createWindow(): void {
     mainWindow.show()
   })
 
-  const template: Electron.MenuItemConstructorOptions[] = [
-    {
-      label: 'File',
-      submenu: [
-        {
-          label: 'New Snippet',
-          accelerator: 'CmdOrCtrl+N',
-          click: () => {
-            mainWindow.webContents.send('menu-new-snippet')
-          }
-        },
-        {
-          label: 'Search',
-          accelerator: 'CmdOrCtrl+F',
-          click: () => {
-            mainWindow.webContents.send('menu-search')
-          }
-        },
-        { type: 'separator' },
-        {
-          label: 'Quit',
-          accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
-          click: () => {
-            app.quit()
-          }
-        }
-      ]
-    },
-    {
-      label: 'Edit',
-      submenu: [
-        { role: 'undo' },
-        { role: 'redo' },
-        { type: 'separator' },
-        { role: 'cut' },
-        { role: 'copy' },
-        { role: 'paste' },
-        { role: 'selectAll' }
-      ]
-    }
-  ]
-
-  const menu = Menu.buildFromTemplate(template)
-  Menu.setApplicationMenu(menu)
+  // Remove o menu da aplicação
+  Menu.setApplicationMenu(null)
 }
 
 app.whenReady().then(() => {

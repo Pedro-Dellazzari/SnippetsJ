@@ -9,7 +9,6 @@ import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid'
 import Tooltip from './Tooltip'
 import ContextMenu, { ContextMenuFolder, ContextMenuProject } from './ContextMenu'
 import { useContextMenu } from '../hooks/useContextMenu'
-import { useFocusMode } from '../contexts/FocusModeContext'
 import NewSnippetModal from './NewSnippetModal'
 import EmptyState from './EmptyState'
 
@@ -108,7 +107,6 @@ const SnippetList: React.FC = () => {
   } = useStore()
 
   const { isOpen, position, targetSnippet, openContextMenu, closeContextMenu } = useContextMenu()
-  const { toggleFocusMode } = useFocusMode()
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showNewModal, setShowNewModal] = useState(false)
@@ -415,18 +413,6 @@ const SnippetList: React.FC = () => {
               </div>
             )}
           </div>
-          
-          {/* Focus Mode toggle */}
-          <Tooltip content="Modo Foco (ocultar sidebar)">
-            <button 
-              onClick={toggleFocusMode}
-              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
-            >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
-              </svg>
-            </button>
-          </Tooltip>
         </div>
       </div>
 

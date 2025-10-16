@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { useStore } from './store/useStore'
-import { FocusModeProvider, useFocusMode } from './contexts/FocusModeContext'
 import { OnboardingProvider } from './contexts/OnboardingContext'
 import Sidebar from './components/Sidebar'
 import SnippetList from './components/SnippetList'
@@ -11,23 +10,21 @@ import DebugPanel from './components/DebugPanel'
 
 function AppContent() {
   const loadPersistedData = useStore(state => state.loadPersistedData)
-  const { isFocusMode } = useFocusMode()
 
   useEffect(() => {
     loadPersistedData()
   }, [loadPersistedData])
 
-
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      {!isFocusMode && <SearchBar />}
-      
+      <SearchBar />
+
       <div className="flex flex-1 overflow-hidden">
-        {!isFocusMode && <Sidebar />}
-        {!isFocusMode && <SnippetList />}
+        <Sidebar />
+        <SnippetList />
         <SnippetDetail />
       </div>
-      
+
       <OnboardingTour />
       <DebugPanel />
     </div>
@@ -37,9 +34,7 @@ function AppContent() {
 function App() {
   return (
     <OnboardingProvider>
-      <FocusModeProvider>
-        <AppContent />
-      </FocusModeProvider>
+      <AppContent />
     </OnboardingProvider>
   )
 }
