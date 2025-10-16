@@ -74,13 +74,22 @@ const tutorialSteps: Step[] = [
   }
 ]
 
-const doubleClickTipStep: Step = {
-  target: '.snippet-card:first-child',
-  content: 'Parabéns pelo seu primeiro snippet! 🎉 Dica rápida: Dê dois cliques rápidos em qualquer snippet para copiá-lo automaticamente para a área de transferência.',
-  title: '⚡ Dica: Copiar com Duplo Clique',
-  placement: 'top',
-  disableBeacon: true
-}
+const doubleClickTipSteps: Step[] = [
+  {
+    target: '.snippet-card:first-child',
+    content: 'Parabéns pelo seu primeiro snippet! 🎉 Dica rápida: Dê dois cliques rápidos em qualquer snippet para copiá-lo automaticamente para a área de transferência.',
+    title: '⚡ Dica: Copiar com Duplo Clique',
+    placement: 'top',
+    disableBeacon: true
+  },
+  {
+    target: '.snippet-card:first-child',
+    content: 'Clique com o botão direito do mouse em qualquer snippet para acessar opções de organização, como mover para pastas e projetos.',
+    title: '📁 Dica: Organizar Snippets',
+    placement: 'top',
+    disableBeacon: true
+  }
+]
 
 interface OnboardingProviderProps {
   children: React.ReactNode
@@ -122,7 +131,8 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
   }
 
   const nextStep = () => {
-    setCurrentStep(prev => Math.min(prev + 1, tutorialSteps.length - 1))
+    const currentSteps = isShowingDoubleClickTip ? doubleClickTipSteps : tutorialSteps
+    setCurrentStep(prev => Math.min(prev + 1, currentSteps.length - 1))
   }
 
   const previousStep = () => {
@@ -130,7 +140,8 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
   }
 
   const setStep = (stepIndex: number) => {
-    setCurrentStep(Math.max(0, Math.min(stepIndex, tutorialSteps.length - 1)))
+    const currentSteps = isShowingDoubleClickTip ? doubleClickTipSteps : tutorialSteps
+    setCurrentStep(Math.max(0, Math.min(stepIndex, currentSteps.length - 1)))
   }
 
   const skipOnboarding = () => {
@@ -155,7 +166,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
   const value: OnboardingContextType = {
     isOnboardingActive,
     currentStep,
-    steps: isShowingDoubleClickTip ? [doubleClickTipStep] : tutorialSteps,
+    steps: isShowingDoubleClickTip ? doubleClickTipSteps : tutorialSteps,
     startOnboarding,
     stopOnboarding,
     nextStep,

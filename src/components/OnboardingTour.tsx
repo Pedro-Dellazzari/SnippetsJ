@@ -18,30 +18,36 @@ const OnboardingTour: React.FC = () => {
   const handleJoyrideCallback = useCallback((data: CallBackProps) => {
     const { status, type, action, index } = data
 
+    console.log('Joyride callback:', { status, type, action, index, stepsLength: steps.length })
+
     // Se finalizou ou pulou o tutorial, fechar
     if (status === 'finished' || status === 'skipped') {
+      console.log('Finalizando onboarding')
       skipOnboarding()
       return
     }
 
     // Se clicou em fechar (X)
     if (action === ACTIONS.CLOSE) {
+      console.log('Fechando onboarding')
       skipOnboarding()
       return
     }
 
-    // Se está na última etapa e clicou em próximo/finalizar
-    if (index === steps.length - 1 && action === ACTIONS.NEXT) {
-      skipOnboarding()
-      return
-    }
-
-    // Navegação entre etapas
-    if (type === 'step:after' || type === 'error:target_not_found') {
+    // Navegação entre etapas - verifica ANTES de verificar se é a última
+    if (type === 'step:after') {
       if (action === ACTIONS.NEXT && index < steps.length - 1) {
+        console.log('Avançando para próximo step')
         nextStep()
-      } else if (action === ACTIONS.PREV) {
+        return
+      } else if (action === ACTIONS.PREV && index > 0) {
+        console.log('Voltando para step anterior')
         previousStep()
+        return
+      } else if (action === ACTIONS.NEXT && index === steps.length - 1) {
+        console.log('Última etapa, finalizando')
+        skipOnboarding()
+        return
       }
     }
 
@@ -182,27 +188,25 @@ const OnboardingTour: React.FC = () => {
         <div className="mb-3">
           {step.content}
         </div>
-        {!isShowingDoubleClickTip && (
-          <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-600">
-            <div className="flex items-center gap-1">
-              {steps.map((_, i) => (
-                <div
-                  key={i}
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    i === index
-                      ? 'bg-blue-500 w-6'
-                      : i < index
-                      ? 'bg-blue-300 dark:bg-blue-700'
-                      : 'bg-gray-300 dark:bg-gray-600'
-                  }`}
-                />
-              ))}
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-              {index + 1} de {steps.length}
-            </div>
+        <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-600">
+          <div className="flex items-center gap-1">
+            {steps.map((_, i) => (
+              <div
+                key={i}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  i === index
+                    ? 'bg-blue-500 w-6'
+                    : i < index
+                    ? 'bg-blue-300 dark:bg-blue-700'
+                    : 'bg-gray-300 dark:bg-gray-600'
+                }`}
+              />
+            ))}
           </div>
-        )}
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            {index + 1} de {steps.length}
+          </div>
+        </div>
       </div>
     )
   }))
@@ -213,12 +217,12 @@ const OnboardingTour: React.FC = () => {
       run={isOnboardingActive}
       stepIndex={currentStep}
       callback={handleJoyrideCallback}
-      continuous={!isShowingDoubleClickTip}
-      showSkipButton={!isShowingDoubleClickTip}
+      continuous={true}
+      showSkipButton={false}
       showProgress={false}
-      hideCloseButton={false}
+      hideCloseButton={isShowingDoubleClickTip}
       scrollToFirstStep={true}
-      disableOverlayClose={false}
+      disableOverlayClose={true}
       disableScrolling={false}
       spotlightClicks={false}
       spotlightPadding={8}
