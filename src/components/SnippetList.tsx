@@ -28,6 +28,17 @@ const animationStyles = `
     }
   }
 
+  @keyframes fadeOutOverlay {
+    from {
+      opacity: 1;
+      transform: translateZ(0) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: translateZ(0) scale(0.92);
+    }
+  }
+
   @keyframes zoomInIcon {
     from {
       opacity: 0;
@@ -66,6 +77,14 @@ const animationStyles = `
       transform: translateZ(0) scale(0.96);
     }
   }
+
+  .copy-overlay-enter {
+    animation: fadeInOverlay 0.7s ease-in-out forwards;
+  }
+
+  .copy-overlay-exit {
+    animation: fadeOutOverlay 0.4s ease-in-out forwards;
+  }
 `
 
 const SnippetList: React.FC = () => {
@@ -99,6 +118,7 @@ const SnippetList: React.FC = () => {
   const [showSortDropdown, setShowSortDropdown] = useState(false)
   const [copiedSnippetId, setCopiedSnippetId] = useState<string | null>(null)
   const [clickedSnippetId, setClickedSnippetId] = useState<string | null>(null)
+  const [exitingSnippetId, setExitingSnippetId] = useState<string | null>(null)
 
   // Inject CSS styles once
   useEffect(() => {
@@ -114,11 +134,20 @@ const SnippetList: React.FC = () => {
   // Optimize timeout callbacks
   const clearCopiedState = useCallback(() => {
     setCopiedSnippetId(null)
+    setExitingSnippetId(null)
   }, [])
 
   const clearClickedState = useCallback(() => {
-    setClickedSnippetId(null)  
+    setClickedSnippetId(null)
   }, [])
+
+  const startExitAnimation = useCallback((snippetId: string) => {
+    setExitingSnippetId(snippetId)
+    // Remove completamente após a animação terminar (400ms)
+    setTimeout(() => {
+      clearCopiedState()
+    }, 400)
+  }, [clearCopiedState])
 
   // Função para filtrar e ordenar snippets
   const sortedSnippets = useMemo(() => {
@@ -269,9 +298,9 @@ const SnippetList: React.FC = () => {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(snippet.content)
         setCopiedSnippetId(snippet.id)
-        
-        // Remove o feedback após 2 segundos para melhor percepção
-        setTimeout(clearCopiedState, 2000)
+
+        // Inicia animação de saída após 1.6 segundos (2s total - 0.4s de animação)
+        setTimeout(() => startExitAnimation(snippet.id), 1600)
       } else {
         // Fallback para browsers mais antigos ou contextos não seguros
         const textArea = document.createElement('textarea')
@@ -285,10 +314,10 @@ const SnippetList: React.FC = () => {
         
         const successful = document.execCommand('copy')
         document.body.removeChild(textArea)
-        
+
         if (successful) {
           setCopiedSnippetId(snippet.id)
-          setTimeout(clearCopiedState, 2000)
+          setTimeout(() => startExitAnimation(snippet.id), 1600)
         } else {
           console.error('Failed to copy using fallback method')
         }
@@ -296,7 +325,7 @@ const SnippetList: React.FC = () => {
     } catch (error) {
       console.error('Failed to copy snippet content:', error)
     }
-  }, [clearCopiedState, clearClickedState])
+  }, [clearClickedState, startExitAnimation])
 
 
   const handleDirectDelete = (snippet: any) => {
@@ -620,10 +649,12 @@ const SnippetList: React.FC = () => {
 
                 {/* Overlay de feedback de cópia */}
                 {copiedSnippetId === snippet.id && (
-                  <div 
-                    className="absolute inset-0 flex items-center justify-center bg-white/96 dark:bg-gray-800/96 backdrop-blur-lg rounded-lg border border-green-200/40 dark:border-green-700/40"
+                  <div
+                    className={clsx(
+                      'absolute inset-0 flex items-center justify-center bg-white/96 dark:bg-gray-800/96 backdrop-blur-lg rounded-lg border border-green-200/40 dark:border-green-700/40',
+                      exitingSnippetId === snippet.id ? 'copy-overlay-exit' : 'copy-overlay-enter'
+                    )}
                     style={{
-                      animation: 'fadeInOverlay 0.7s ease-in-out forwards',
                       willChange: 'opacity, transform',
                       transform: 'translateZ(0)'
                     }}
