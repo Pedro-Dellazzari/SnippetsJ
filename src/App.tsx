@@ -6,7 +6,6 @@ import SnippetList from './components/SnippetList'
 import SnippetDetail from './components/SnippetDetail'
 import SearchBar from './components/SearchBar'
 import OnboardingTour from './components/OnboardingTour'
-import DebugPanel from './components/DebugPanel'
 
 function AppContent() {
   const loadPersistedData = useStore(state => state.loadPersistedData)
@@ -26,7 +25,6 @@ function AppContent() {
       </div>
 
       <OnboardingTour />
-      <DebugPanel />
     </div>
   )
 }
