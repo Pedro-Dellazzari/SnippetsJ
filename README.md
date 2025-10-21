@@ -4,31 +4,29 @@ Um aplicativo desktop elegante para organizar, buscar e reutilizar trechos de c�
 
 ## ✨ Funcionalidades
 
-### Já Implementadas ✅
 - 🎨 **Layout responsivo de 3 colunas**: Barra lateral, lista de snippets e visualizador de código
-- 🔍 **Busca inteligente**: Busca fuzzy por título, descrição, conteúdo e tags
-- 📁 **Organização flexível**: Categorias, projetos e tags coloridos
-- 💖 **Sistema de favoritos**: Marque snippets importantes
-- 🎨 **Syntax highlighting**: Monaco Editor com destaque de sintaxe
-- 📋 **Cópia com 1 clique**: Integração com clipboard do sistema
-- 📊 **Métricas de uso**: Contadores de uso e última utilização
-- 🎯 **Interface limpa**: Design inspirado no estilo Apple
-
-### Em Desenvolvimento 🚧
-- 💾 **Persistência de dados**: SQLite para armazenamento local
-- ➕ **Formulários CRUD**: Adicionar/editar snippets
-- 🌙 **Tema escuro**: Modo escuro opcional
-- 🔧 **Gerenciamento de variáveis**: Suporte a arquivos .env
+- 🔍 **Busca inteligente**: Busca fuzzy por título, conteúdo, tags e linguagem
+- 📁 **Organização flexível**: Pastas hierárquicas, projetos e tags personalizadas
+- 💖 **Sistema de favoritos**: Marque snippets importantes para acesso rápido
+- 🎨 **Syntax highlighting**: Monaco Editor com destaque de sintaxe para múltiplas linguagens
+- 📋 **Cópia rápida**: Duplo clique para copiar ou botão de cópia com feedback visual
+- 🖱️ **Menu contextual**: Clique direito para mover snippets entre pastas e projetos
+- 💾 **Persistência local**: Dados salvos no localStorage do navegador
+- 🌙 **Tema escuro**: Suporte completo para modo claro e escuro
+- ✏️ **CRUD completo**: Criar, editar, duplicar e excluir snippets
+- 🎓 **Onboarding interativo**: Tutorial guiado para novos usuários
+- ⌨️ **Atalhos de teclado**: Ctrl+N para novo snippet e mais
 
 ## 🛠 Tecnologias
 
 - **Frontend**: React 18 + TypeScript
-- **Desktop**: Electron 27
+- **Desktop**: Electron 36
 - **Styling**: Tailwind CSS + Headless UI
-- **Editor**: Monaco Editor
+- **Editor**: Monaco Editor (VS Code editor)
 - **Busca**: Fuse.js (fuzzy search)
 - **Estado**: Zustand
-- **Build**: Vite
+- **Build**: Vite + electron-builder
+- **Onboarding**: React Joyride
 
 ## 🚀 Como Executar
 
@@ -50,8 +48,11 @@ npm run dev:react
 # Build do projeto
 npm run build
 
-# Gerar executável
-npm run dist
+# Gerar executável Windows
+npm run dist:win
+
+# Gerar versão portável (sem instalação)
+npm run dist:portable
 ```
 
 ## 📂 Estrutura do Projeto
@@ -63,10 +64,14 @@ snippets-app/
 │   └── preload.ts     # Script de pré-carregamento
 ├── src/               # Código React
 │   ├── components/    # Componentes UI
+│   ├── contexts/      # Context API (Onboarding)
+│   ├── hooks/         # Custom hooks
 │   ├── store/         # Estado global (Zustand)
 │   └── types/         # Definições TypeScript
+├── build/             # Ícones e recursos
 ├── dist/              # Build do Electron
-└── dist-react/        # Build do React
+├── dist-react/        # Build do React
+└── release/           # Executáveis gerados
 ```
 
 ## 🎨 Interface
@@ -77,17 +82,21 @@ O aplicativo possui três painéis principais:
 2. **Lista Central**: Snippets com visualização compacta e busca
 3. **Painel Direito**: Visualizador de código com Monaco Editor
 
-## 🎯 Próximos Passos
+## 📝 Licença
 
-1. **Persistência de Dados**: Implementar SQLite para salvar snippets
-2. **Formulários**: Interface para criar/editar snippets
-3. **Importação/Exportação**: Backup e sincronização
-4. **Extensibilidade**: Plugins e temas personalizados
+Este projeto está sob a licença MIT. Veja o arquivo LICENSE para mais detalhes.
 
 ## 🤝 Contribuição
 
-Este é um projeto em desenvolvimento ativo. Sugestões e melhorias são sempre bem-vindas!
+Contribuições são bem-vindas! Sinta-se à vontade para:
+- Reportar bugs
+- Sugerir novas funcionalidades
+- Enviar pull requests
+
+## 👨‍💻 Autor
+
+Desenvolvido por Pedro
 
 ---
 
-**Desenvolvido com ❤️ para profissionais de dados**
+**Feito com ❤️ para desenvolvedores que amam código organizado**

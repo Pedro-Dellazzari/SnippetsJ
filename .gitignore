@@ -95,6 +95,7 @@ __tests__/
 *.test.js
 *.test.ts
 *.test.tsx
+test-*.js
 
 # Backup files
 *.backup
@@ -109,3 +110,9 @@ __tests__/
 config.json
 secrets.json
 .claude/
+
+# Development scripts (keep start.js, remove others if needed)
+# start.ps1 can be kept for Windows users
+
+# Lock files (keeping package-lock.json ignored)
+pnpm-lock.yaml
