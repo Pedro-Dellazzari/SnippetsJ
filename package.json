@@ -64,6 +64,7 @@
   "build": {
     "appId": "com.pedro.snippets-app",
     "productName": "Snippets App",
+    "publish": null,
     "directories": {
       "output": "release",
       "buildResources": "build"
