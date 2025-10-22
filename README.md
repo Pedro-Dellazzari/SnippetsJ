@@ -1,102 +1,91 @@
 # 📚 Snippets App
 
-Um aplicativo desktop elegante para organizar, buscar e reutilizar trechos de código de forma rápida e prática.
+Um aplicativo desktop elegante para organizar, buscar e reutilizar seus trechos de código de forma rápida e prática.
 
-## ✨ Funcionalidades
+> **📥 [Baixe a última versão aqui](../../releases/latest)** - Windows 10/11 (x64)
 
-- 🎨 **Layout responsivo de 3 colunas**: Barra lateral, lista de snippets e visualizador de código
-- 🔍 **Busca inteligente**: Busca fuzzy por título, conteúdo, tags e linguagem
-- 📁 **Organização flexível**: Pastas hierárquicas, projetos e tags personalizadas
-- 💖 **Sistema de favoritos**: Marque snippets importantes para acesso rápido
-- 🎨 **Syntax highlighting**: Monaco Editor com destaque de sintaxe para múltiplas linguagens
-- 📋 **Cópia rápida**: Duplo clique para copiar ou botão de cópia com feedback visual
-- 🖱️ **Menu contextual**: Clique direito para mover snippets entre pastas e projetos
-- 💾 **Persistência local**: Dados salvos no localStorage do navegador
-- 🌙 **Tema escuro**: Suporte completo para modo claro e escuro
-- ✏️ **CRUD completo**: Criar, editar, duplicar e excluir snippets
-- 🎓 **Onboarding interativo**: Tutorial guiado para novos usuários
-- ⌨️ **Atalhos de teclado**: Ctrl+N para novo snippet e mais
+## 🎯 Por que usar o Snippets App?
 
-## 🛠 Tecnologias
+Cansado de procurar aquele snippet de código que você sempre esquece? O Snippets App é a solução perfeita para desenvolvedores que querem:
 
-- **Frontend**: React 18 + TypeScript
-- **Desktop**: Electron 36
-- **Styling**: Tailwind CSS + Headless UI
-- **Editor**: Monaco Editor (VS Code editor)
-- **Busca**: Fuse.js (fuzzy search)
-- **Estado**: Zustand
-- **Build**: Vite + electron-builder
-- **Onboarding**: React Joyride
+- ✅ Organizar código de forma profissional
+- ✅ Encontrar snippets em segundos
+- ✅ Aumentar produtividade no dia a dia
+- ✅ Ter uma biblioteca pessoal de código sempre à mão
 
-## 🚀 Como Executar
+## ✨ Principais Funcionalidades
 
-### Pré-requisitos
-- Node.js (v20+)
-- npm
+### 🔍 Busca Inteligente
+Encontre qualquer snippet instantaneamente com busca fuzzy que procura em título, conteúdo, tags e linguagem de programação.
 
-### Instalação
-```bash
-# Instalar dependências
-npm install
+### 📁 Organização Poderosa
+- **Pastas hierárquicas**: Organize em categorias e subcategorias
+- **Projetos**: Agrupe snippets por projeto
+- **Tags personalizadas**: Crie seus próprios sistemas de etiquetas
+- **Favoritos**: Marque snippets importantes para acesso rápido
 
-# Modo desenvolvimento (React + Electron)
-npm run dev
+### 💻 Editor Profissional
+- **Monaco Editor**: O mesmo editor do VS Code integrado
+- **Syntax highlighting**: Suporte para dezenas de linguagens
+- **Cópia rápida**: Duplo clique ou botão de cópia com feedback visual
+- **Tema escuro/claro**: Interface adaptável às suas preferências
 
-# Apenas React (para desenvolvimento web)
-npm run dev:react
+### ⚡ Produtividade
+- **Atalhos de teclado**: Ctrl+N para criar, Ctrl+F para buscar e mais
+- **Menu contextual**: Clique direito para ações rápidas
+- **Onboarding interativo**: Tutorial guiado para novos usuários
+- **Duplicação de snippets**: Clone e modifique rapidamente
 
-# Build do projeto
-npm run build
+## 📥 Como Instalar
 
-# Gerar executável Windows
-npm run dist:win
+### Opção 1: Instalador (Recomendado)
+1. Acesse [Releases](../../releases/latest)
+2. Baixe `Snippets App Setup x.x.x.exe`
+3. Execute o instalador
+4. Pronto! O app estará no menu Iniciar
 
-# Gerar versão portável (sem instalação)
-npm run dist:portable
-```
-
-## 📂 Estrutura do Projeto
-
-```
-snippets-app/
-├── electron/           # Código do Electron
-│   ├── main.ts        # Processo principal
-│   └── preload.ts     # Script de pré-carregamento
-├── src/               # Código React
-│   ├── components/    # Componentes UI
-│   ├── contexts/      # Context API (Onboarding)
-│   ├── hooks/         # Custom hooks
-│   ├── store/         # Estado global (Zustand)
-│   └── types/         # Definições TypeScript
-├── build/             # Ícones e recursos
-├── dist/              # Build do Electron
-├── dist-react/        # Build do React
-└── release/           # Executáveis gerados
-```
+### Opção 2: Versão Portátil
+1. Acesse [Releases](../../releases/latest)
+2. Baixe `Snippets App x.x.x Portable.exe`
+3. Execute direto, sem instalação
+4. Perfeito para uso em pen drives ou ambientes restritos
 
 ## 🎨 Interface
 
-O aplicativo possui três painéis principais:
+O aplicativo possui um layout intuitivo de 3 painéis:
 
-1. **Barra Lateral Esquerda**: Navegação por categorias, projetos e tags
-2. **Lista Central**: Snippets com visualização compacta e busca
-3. **Painel Direito**: Visualizador de código com Monaco Editor
+1. **📂 Barra Lateral**: Navegue por pastas, projetos, tags e favoritos
+2. **📋 Lista Central**: Veja todos os snippets com prévia e busca instantânea
+3. **💻 Editor**: Visualize e edite código com syntax highlighting completo
+
+## 🛠️ Tecnologias
+
+Desenvolvido com as melhores tecnologias modernas:
+- React 18 + TypeScript
+- Electron 36
+- Monaco Editor (VS Code)
+- Tailwind CSS
+
+## 🔒 Privacidade
+
+Todos os seus dados são salvos **localmente** no seu computador. Nenhuma informação é enviada para servidores externos.
+
+---
+
+## 👨‍💻 Para Desenvolvedores
+
+Quer contribuir ou rodar o projeto localmente? Confira a [documentação para desenvolvedores](./CONTRIBUTING.md).
+
+## 🤝 Contribuindo
+
+Encontrou um bug? Tem uma sugestão? Abra uma [issue](../../issues) ou envie um pull request!
 
 ## 📝 Licença
 
-Este projeto está sob a licença MIT. Veja o arquivo LICENSE para mais detalhes.
-
-## 🤝 Contribuição
-
-Contribuições são bem-vindas! Sinta-se à vontade para:
-- Reportar bugs
-- Sugerir novas funcionalidades
-- Enviar pull requests
-
-## 👨‍💻 Autor
-
-Desenvolvido por Pedro
+MIT License - veja [LICENSE](./LICENSE) para mais detalhes.
 
 ---
 
 **Feito com ❤️ para desenvolvedores que amam código organizado**
+
+Desenvolvido por Pedro
