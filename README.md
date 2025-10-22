@@ -72,10 +72,6 @@ Todos os seus dados são salvos **localmente** no seu computador. Nenhuma inform
 
 ---
 
-## 👨‍💻 Para Desenvolvedores
-
-Quer contribuir ou rodar o projeto localmente? Confira a [documentação para desenvolvedores](./CONTRIBUTING.md).
-
 ## 🤝 Contribuindo
 
 Encontrou um bug? Tem uma sugestão? Abra uma [issue](../../issues) ou envie um pull request!
